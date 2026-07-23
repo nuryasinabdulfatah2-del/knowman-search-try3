@@ -1,509 +1,506 @@
 # -*- coding: utf-8 -*-
 """
 ================================================================================
-ENTERPRISE KNOWLEDGE SEARCH & STRATEGIC LESSONS LEARNED PLATFORM
+ENTERPRISE KNOWLEDGE MANAGEMENT & STRATEGIC LESSONS LEARNED
 ================================================================================
-Production-Grade Prototype - Apple / Bento Box Design System
+Design System: Apple / iOS (Strict High-Contrast Monochromatic & Bento Box)
+Rules Applied: No Emojis, Macro Typography, Z-Axis Depth, Balanced Asymmetry.
 ================================================================================
 """
 
 import streamlit as st
 import sqlite3
 import pandas as pd
-import numpy as np
 import plotly.express as px
-import plotly.graph_objects as go
 import plotly.io as pio
-from datetime import datetime, date
-import io
+from datetime import datetime
 import os
-import re
-import html as html_lib
-import traceback
-
-# ------------------------------------------------------------------------------
-# OPTIONAL IMPORTS UNTUK PARSING DOKUMEN
-# ------------------------------------------------------------------------------
-try:
-    import pdfplumber
-    PDFPLUMBER_AVAILABLE = True
-except ImportError:
-    PDFPLUMBER_AVAILABLE = False
-
-try:
-    from pypdf import PdfReader
-    PYPDF_AVAILABLE = True
-except ImportError:
-    PYPDF_AVAILABLE = False
-
-try:
-    import docx
-    DOCX_AVAILABLE = True
-except ImportError:
-    DOCX_AVAILABLE = False
-
 
 # ==============================================================================
-# 1. KONFIGURASI GLOBAL & PALET MONOKROMATIK BENTO
+# 1. KONFIGURASI GLOBAL & WARNA (APPLE DESIGN SYSTEM)
 # ==============================================================================
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "km_apple.db")
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "km_platform.db")
+# Status Konstanta (Tanpa Emoji)
+STATUS_DRAFT = "Draft"
+STATUS_VERIFIED = "Verified"
+STATUS_REJECTED = "Rejected"
 
-STATUS_DRAFT = "🟡 Draft / Pending"
-STATUS_VERIFIED = "🟢 Verified"
-STATUS_REJECTED = "🔴 Rejected"
-ALL_STATUSES = [STATUS_DRAFT, STATUS_VERIFIED, STATUS_REJECTED]
-
-# Palet Monokromatik & Kontras Tinggi
-COLOR_BG = "#F5F5F7"          # Abu-abu premium Apple
-COLOR_WHITE = "#FFFFFF"       # Putih bersih untuk Bento Box
-COLOR_BLACK = "#000000"       # Hitam pekat untuk Macro Typography
-COLOR_GRAY_DARK = "#86868B"   # Abu-abu teks sekunder
-COLOR_CTA = "#0071E3"         # Biru cerah KHUSUS untuk aksen/CTA
-
-# Warna Status Muted (agar tidak merusak estetika monokrom)
-COLOR_STATUS_GREEN = "#E8F5E9"
-COLOR_STATUS_GREEN_TEXT = "#1B5E20"
-COLOR_STATUS_RED = "#FFEBEE"
-COLOR_STATUS_RED_TEXT = "#B71C1C"
-COLOR_STATUS_YELLOW = "#FFF8E1"
-COLOR_STATUS_YELLOW_TEXT = "#F57F17"
-
+# Level & Kategori
 IMPACT_LEVELS = ["Tinggi", "Sedang", "Rendah"]
 CATEGORY_OPTIONS = [
-    "Perencanaan Proyek", "Manajemen Risiko", "Pengadaan & Kontrak",
-    "Kualitas & Kepatuhan (QA/QC)", "Sumber Daya Manusia", "Teknologi & Sistem",
-    "Keuangan & Anggaran", "Operasional", "Stakeholder & Komunikasi", "Lainnya"
+    "Perencanaan Proyek", "Keuangan & Anggaran", "Manajemen Risiko", 
+    "Pengadaan & Kontrak", "Kualitas & Kepatuhan", "Teknologi & Sistem", 
+    "Operasional", "Lainnya"
 ]
 
-KEYWORDS_SUMMARY = ["isu", "masalah", "kendala", "permasalahan", "issue", "problem", "hambatan"]
-KEYWORDS_ROOT_CAUSE = ["akar masalah", "akar penyebab", "disebabkan", "root cause", "sumber masalah"]
-KEYWORDS_RECOMMENDATION = ["rekomendasi", "solusi", "usulan", "tindak lanjut", "saran", "mitigasi"]
-
-# Tema Plotly Monokromatik
+# Tema Plotly Monokromatik (Menyatu dengan Background Transparan)
 try:
-    _apple_font = "'SF Pro Display', 'Inter', -apple-system, sans-serif"
-    _template = pio.templates["plotly_white"]
-    _template.layout.font = dict(family=_apple_font, color=COLOR_BLACK, size=13)
-    _template.layout.paper_bgcolor = "rgba(0,0,0,0)"
-    _template.layout.plot_bgcolor = "rgba(0,0,0,0)"
-    _template.layout.colorway = ["#000000", "#555555", "#888888", "#BBBBBB", COLOR_CTA]
-    pio.templates["bento_mono"] = _template
-    pio.templates.default = "bento_mono"
-except:
+    _font_family = "'SF Pro Display', 'Inter', -apple-system, sans-serif"
+    _apple_template = pio.templates["plotly_white"]
+    _apple_template.layout.font = dict(family=_font_family, color="#000000", size=13)
+    _apple_template.layout.paper_bgcolor = "rgba(0,0,0,0)"
+    _apple_template.layout.plot_bgcolor = "rgba(0,0,0,0)"
+    # Palet abu-abu ke hitam pekat
+    _apple_template.layout.colorway = ["#000000", "#555555", "#888888", "#BBBBBB", "#E5E5E5"]
+    pio.templates["apple_mono"] = _apple_template
+    pio.templates.default = "apple_mono"
+except Exception:
     pass
 
-
 # ==============================================================================
-# 2. DATABASE SQLITE
+# 2. DATABASE LAYER (SQLITE)
 # ==============================================================================
-
 def get_connection():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 
 def init_db():
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS issues (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            project_name TEXT,
+            category TEXT,
+            impact_level TEXT,
+            status TEXT DEFAULT 'Draft',
+            summary TEXT,
+            root_cause TEXT,
+            recommendation TEXT,
+            upload_date TEXT
+        )
+    """)
+    
+    # Cek apakah tabel kosong, jika ya masukkan 1 data dummy
+    cur.execute("SELECT COUNT(*) as cnt FROM issues")
+    if cur.fetchone()['cnt'] == 0:
         cur.execute("""
-            CREATE TABLE IF NOT EXISTS issues (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                title TEXT NOT NULL, project_name TEXT, category TEXT, impact_level TEXT,
-                status TEXT DEFAULT '🟡 Draft / Pending', summary TEXT, root_cause TEXT,
-                recommendation TEXT, uploader TEXT, upload_date TEXT, project_year INTEGER,
-                document_version TEXT, file_name TEXT, extracted_text TEXT,
-                reviewer_notes TEXT, reviewed_by TEXT, reviewed_date TEXT
-            )
-        """)
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        st.error(f"❌ DB Error: {e}")
-
-def insert_issue(data: dict) -> bool:
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute("""
-            INSERT INTO issues (
-                title, project_name, category, impact_level, status, summary, root_cause, 
-                recommendation, uploader, upload_date, project_year, document_version, 
-                file_name, extracted_text, reviewer_notes, reviewed_by, reviewed_date
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO issues (title, project_name, category, impact_level, status, summary, root_cause, recommendation, upload_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            data.get("title", ""), data.get("project_name", ""), data.get("category", ""),
-            data.get("impact_level", ""), data.get("status", STATUS_DRAFT), data.get("summary", ""),
-            data.get("root_cause", ""), data.get("recommendation", ""), data.get("uploader", ""),
-            data.get("upload_date", ""), data.get("project_year", 0), data.get("document_version", ""),
-            data.get("file_name", ""), data.get("extracted_text", ""), "", "", ""
+            "Deviasi Estimasi Biaya Aktivitas Lapangan",
+            "Implementasi Standard Costing",
+            "Keuangan & Anggaran",
+            "Tinggi",
+            "Draft",
+            "Terdapat deviasi signifikan pada estimasi biaya aktivitas lapangan jika dibandingkan dengan realisasi triwulan sebelumnya.",
+            "Asumsi awal tidak memperhitungkan perubahan regulasi pajak dan inflasi lokal yang mempengaruhi biaya operasional secara langsung.",
+            "Melakukan recalibration terhadap 117 model biaya aktivitas dan menetapkan pembaruan indeks secara triwulanan.",
+            datetime.now().strftime("%Y-%m-%d")
+        ))
+    conn.commit()
+    conn.close()
+
+def fetch_issues():
+    conn = get_connection()
+    df = pd.read_sql_query("SELECT * FROM issues ORDER BY id DESC", conn)
+    conn.close()
+    return df
+
+def insert_issue(data):
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO issues (title, project_name, category, impact_level, status, summary, root_cause, recommendation, upload_date)
+            VALUES (?, ?, ?, ?, 'Draft', ?, ?, ?, ?)
+        """, (
+            data['title'], data['project'], data['category'], data['impact'], 
+            data['summary'], data['root_cause'], data['recommendation'], 
+            datetime.now().strftime("%Y-%m-%d")
         ))
         conn.commit()
         conn.close()
         return True
-    except Exception as e:
+    except Exception:
         return False
 
-def update_issue_status(issue_id: int, new_status: str, reviewer_notes: str = "") -> bool:
+def update_status(issue_id, new_status):
     try:
         conn = get_connection()
         cur = conn.cursor()
-        cur.execute("""
-            UPDATE issues SET status = ?, reviewer_notes = ?, reviewed_by = 'PMO', reviewed_date = ?
-            WHERE id = ?
-        """, (new_status, reviewer_notes, datetime.now().strftime("%Y-%m-%d"), issue_id))
+        cur.execute("UPDATE issues SET status = ? WHERE id = ?", (new_status, issue_id))
         conn.commit()
         conn.close()
         return True
-    except:
+    except Exception:
         return False
 
-def delete_issue(issue_id: int) -> bool:
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute("DELETE FROM issues WHERE id = ?", (issue_id,))
-        conn.commit()
-        conn.close()
-        return True
-    except:
-        return False
-
-def fetch_all_issues() -> pd.DataFrame:
-    try:
-        conn = get_connection()
-        df = pd.read_sql_query("SELECT * FROM issues ORDER BY id DESC", conn)
-        conn.close()
-        return df
-    except:
-        return pd.DataFrame()
-
-
 # ==============================================================================
-# 3. PARSING DOKUMEN & AI AUTO-FILL
+# 3. CUSTOM CSS (APPLE MACRO TYPOGRAPHY & BENTO BOX)
 # ==============================================================================
-# (Sengaja diringkas untuk kelancaran UI, fungsionalitas tetap sama)
-
-def parse_uploaded_document(uploaded_file) -> str:
-    if not uploaded_file: return ""
-    try:
-        if uploaded_file.name.lower().endswith(".pdf") and PDFPLUMBER_AVAILABLE:
-            with pdfplumber.open(io.BytesIO(uploaded_file.read())) as pdf:
-                return "\n".join([p.extract_text() for p in pdf.pages if p.extract_text()])
-        elif uploaded_file.name.lower().endswith(".txt"):
-            return uploaded_file.read().decode("utf-8", errors="ignore")
-    except: pass
-    return ""
-
-def smart_auto_fill(text: str) -> dict:
-    res = {"summary": "", "root_cause": "", "recommendation": ""}
-    if not text: return res
-    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if len(s) > 15]
-    
-    def extract(kw_list):
-        matched = [s for s in sentences if any(kw in s.lower() for kw in kw_list)]
-        return " ".join(matched[:3])
-        
-    res["summary"] = extract(KEYWORDS_SUMMARY) or " ".join(sentences[:2])
-    res["root_cause"] = extract(KEYWORDS_ROOT_CAUSE) or "Akar masalah belum ditemukan eksplisit."
-    res["recommendation"] = extract(KEYWORDS_RECOMMENDATION) or "Rekomendasi belum ditemukan eksplisit."
-    return res
-
-
-# ==============================================================================
-# 4. CUSTOM CSS: MACRO TYPOGRAPHY & BENTO BOX
-# ==============================================================================
-
-def load_custom_css():
-    st.markdown(f"""
+def inject_custom_css():
+    st.markdown("""
     <style>
-    /* Mengimpor Inter sebagai substitusi geometris SF Pro di browser non-Apple */
+    /* Mengimpor Font Geometris (Inter sebagai alternatif SF Pro) */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
 
-    html, body, [class*="css"], .stApp, button, input, textarea, select {{
-        font-family: 'SF Pro Display', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
-        background-color: {COLOR_BG};
-        color: {COLOR_BLACK};
-    }}
+    /* Reset & Base Variables */
+    :root {
+        --bg-color: #F5F5F7;
+        --card-bg: #FFFFFF;
+        --text-main: #000000;
+        --text-muted: #86868B;
+        --accent: #0071E3;
+        --border-light: rgba(0,0,0,0.03);
+    }
 
-    /* 1. MACRO TYPOGRAPHY & ASIMETRIS SEIMBANG */
-    .hero-container {{
-        text-align: center;
-        padding: 4rem 0 3rem 0;
-        margin-bottom: 2rem;
-    }}
-    .hero-title {{
-        font-size: 4.5rem;
+    html, body, [class*="css"], .stApp, p, div, span, label {
+        font-family: 'SF Pro Display', 'Inter', -apple-system, sans-serif !important;
+        background-color: var(--bg-color);
+        color: var(--text-main);
+    }
+    
+    /* Sembunyikan elemen bawaan Streamlit yang mengganggu */
+    header {visibility: hidden;}
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    .block-container {
+        padding-top: 3rem !important;
+        padding-bottom: 5rem !important;
+        max-width: 1400px !important;
+    }
+
+    /* 1. MACRO TYPOGRAPHY */
+    .macro-title {
+        font-size: 5.5rem;
         font-weight: 900;
-        color: {COLOR_BLACK};
-        line-height: 1;
-        letter-spacing: -0.05em;
+        letter-spacing: -0.04em;
+        line-height: 1.05;
+        color: var(--text-main);
         margin-bottom: 1rem;
-    }}
-    .hero-subtitle {{
-        font-size: 1.3rem;
+        background-color: transparent !important;
+    }
+    .macro-subtitle {
+        font-size: 1.4rem;
         font-weight: 400;
-        color: {COLOR_GRAY_DARK};
         letter-spacing: -0.01em;
-        max-width: 700px;
-        margin: 0 auto;
-    }}
+        color: var(--text-muted);
+        margin-bottom: 4rem;
+        max-width: 800px;
+        background-color: transparent !important;
+    }
 
-    /* 2 & 3. BENTO BOX & ILUSI 3D (Z-Axis Depth) */
-    .bento-box {{
-        background: {COLOR_WHITE};
+    /* 2 & 3. BENTO BOX LAYOUT & Z-AXIS DEPTH */
+    .bento-box {
+        background-color: var(--card-bg) !important;
         border-radius: 28px;
-        padding: 28px;
+        padding: 32px;
         margin-bottom: 24px;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.02);
-        border: 1px solid rgba(0,0,0,0.03);
+        border: 1px solid var(--border-light);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.04);
         transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    }}
-    .bento-box:hover {{
-        transform: translateY(-4px) scale(1.01);
-        box-shadow: 0 30px 60px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.03);
-    }}
+        height: 100%;
+    }
+    .bento-box:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 30px 60px rgba(0,0,0,0.08);
+    }
+    .bento-box * {
+        background-color: transparent !important;
+    }
 
-    /* Text Formatting dalam Bento Box */
-    .bento-kpi-value {{
-        font-size: 3.5rem;
+    /* KPI Specific inside Bento */
+    .kpi-value {
+        font-size: 4rem;
         font-weight: 800;
         letter-spacing: -0.04em;
-        color: {COLOR_BLACK};
-        line-height: 1.1;
-    }}
-    .bento-kpi-label {{
+        color: var(--text-main);
+        line-height: 1;
+        margin-bottom: 0.5rem;
+    }
+    .kpi-label {
         font-size: 1rem;
         font-weight: 600;
-        color: {COLOR_GRAY_DARK};
+        letter-spacing: 0.02em;
+        color: var(--text-muted);
         text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }}
+    }
 
-    /* Issue Card Specifics */
-    .issue-title {{
+    /* Issue Card Specific */
+    .issue-title {
         font-size: 1.8rem;
         font-weight: 800;
         letter-spacing: -0.03em;
-        margin-bottom: 0.5rem;
-    }}
-    .issue-meta {{
+        margin: 1rem 0 0.5rem 0;
+        line-height: 1.2;
+    }
+    .issue-meta {
         font-size: 0.9rem;
-        color: {COLOR_GRAY_DARK};
         font-weight: 600;
-        margin-bottom: 1.5rem;
-    }}
-    .section-label {{
-        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-bottom: 2rem;
+    }
+    .issue-section-title {
+        font-size: 0.8rem;
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        color: {COLOR_BLACK};
+        color: var(--text-muted);
         margin-top: 1.5rem;
-        margin-bottom: 0.3rem;
-        border-bottom: 2px solid #000;
-        display: inline-block;
-        padding-bottom: 2px;
-    }}
+        margin-bottom: 0.5rem;
+        border-bottom: 1px solid #E5E5E5;
+        padding-bottom: 4px;
+    }
+    .issue-text {
+        font-size: 1.1rem;
+        line-height: 1.6;
+        color: var(--text-main);
+        font-weight: 400;
+    }
 
-    /* 4. TOMBOL CALL TO ACTION (CTA) */
-    .stButton button {{
-        background-color: {COLOR_BLACK};
-        color: {COLOR_WHITE} !important;
-        border-radius: 40px;
-        font-weight: 600;
-        padding: 0.6rem 2rem;
-        border: none;
-        box-shadow: 0 8px 16px rgba(0,0,0,0.15);
-        transition: all 0.2s ease;
-    }}
-    .stButton button:hover {{
-        background-color: {COLOR_CTA};
-        transform: scale(1.02);
-        box-shadow: 0 12px 24px rgba(0, 113, 227, 0.3);
-    }}
-    
-    /* Input & Tab Styling */
-    .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {{
-        border-radius: 16px !important;
-        background-color: {COLOR_BG} !important;
-        border: 1px solid rgba(0,0,0,0.05) !important;
-        font-weight: 600;
-    }}
-    .stTextInput input:focus, .stTextArea textarea:focus {{
-        border-color: {COLOR_BLACK} !important;
-        box-shadow: 0 0 0 2px {COLOR_BLACK} !important;
-    }}
-    
-    /* Badges */
-    .badge {{
-        padding: 6px 12px;
+    /* Badges / Tags (Muted Colors) */
+    .badge {
+        display: inline-block;
+        padding: 6px 14px;
         border-radius: 20px;
         font-size: 0.8rem;
-        font-weight: 800;
-        display: inline-block;
+        font-weight: 700;
+        letter-spacing: 0.02em;
         margin-right: 8px;
-    }}
+    }
+    .badge-Draft { background-color: #F5F5F7 !important; color: #86868B !important; }
+    .badge-Verified { background-color: #E8F5E9 !important; color: #1B5E20 !important; }
+    .badge-Rejected { background-color: #FFEBEE !important; color: #B71C1C !important; }
+    .badge-Impact { background-color: #000000 !important; color: #FFFFFF !important; }
+
+    /* Forms & Inputs */
+    .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {
+        background-color: var(--bg-color) !important;
+        border: 1px solid rgba(0,0,0,0.05) !important;
+        border-radius: 16px !important;
+        padding: 12px 16px !important;
+        font-weight: 500;
+        font-size: 1.05rem;
+        color: var(--text-main) !important;
+        transition: all 0.2s ease;
+    }
+    .stTextInput input:focus, .stTextArea textarea:focus, .stSelectbox div[data-baseweb="select"] > div:focus-within {
+        border-color: var(--text-main) !important;
+        box-shadow: 0 0 0 2px var(--text-main) !important;
+    }
+
+    /* Buttons */
+    .stButton button {
+        background-color: var(--text-main) !important;
+        color: var(--card-bg) !important;
+        border-radius: 999px !important; /* Pill shape */
+        padding: 12px 32px !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.01em;
+        border: none !important;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.1) !important;
+        transition: all 0.3s ease !important;
+        height: auto !important;
+    }
+    .stButton button:hover {
+        background-color: var(--accent) !important;
+        transform: scale(1.02);
+        box-shadow: 0 12px 24px rgba(0,113,227,0.3) !important;
+    }
+    .stButton button p {
+        color: var(--card-bg) !important;
+        font-size: 1.05rem !important;
+        margin: 0 !important;
+    }
+
+    /* Tabs Styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 2rem;
+        background-color: transparent !important;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 60px;
+        white-space: pre-wrap;
+        background-color: transparent !important;
+        border-radius: 0px 0px 0px 0px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text-muted);
+    }
+    .stTabs [aria-selected="true"] {
+        color: var(--text-main) !important;
+        border-bottom-color: var(--text-main) !important;
+        border-bottom-width: 3px !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-
 # ==============================================================================
-# 5. KOMPONEN UI UTAMA
+# 4. KOMPONEN UI (HTML GENERATORS)
 # ==============================================================================
+def render_bento_kpi(value, label):
+    return f"""
+    <div class="bento-box" style="text-align: left;">
+        <div class="kpi-value">{value}</div>
+        <div class="kpi-label">{label}</div>
+    </div>
+    """
 
-def render_kpi_bento(df: pd.DataFrame):
-    t_issues = len(df)
-    t_verified = len(df[df["status"] == STATUS_VERIFIED]) if t_issues else 0
-    t_high = len(df[df["impact_level"] == "Tinggi"]) if t_issues else 0
-
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.markdown(f"""
-        <div class="bento-box" style="text-align:center;">
-            <div class="bento-kpi-value">{t_issues}</div>
-            <div class="bento-kpi-label">TOTAL ISU</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with col2:
-        st.markdown(f"""
-        <div class="bento-box" style="text-align:center;">
-            <div class="bento-kpi-value">{t_verified}</div>
-            <div class="bento-kpi-label">VERIFIED</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with col3:
-        st.markdown(f"""
-        <div class="bento-box" style="text-align:center; background-color: {COLOR_BLACK}; color: {COLOR_WHITE};">
-            <div class="bento-kpi-value" style="color:{COLOR_WHITE};">{t_high}</div>
-            <div class="bento-kpi-label" style="color:rgba(255,255,255,0.7);">DAMPAK TINGGI</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-def render_issue_bento(row):
-    # Penentuan warna badge monokrom/muted
-    bg_stat, tx_stat = COLOR_STATUS_YELLOW, COLOR_STATUS_YELLOW_TEXT
-    if "Verified" in row['status']: bg_stat, tx_stat = COLOR_STATUS_GREEN, COLOR_STATUS_GREEN_TEXT
-    if "Rejected" in row['status']: bg_stat, tx_stat = COLOR_STATUS_RED, COLOR_STATUS_RED_TEXT
-    
-    bg_imp, tx_imp = COLOR_BG, COLOR_GRAY_DARK
-    if row['impact_level'] == "Tinggi": bg_imp, tx_imp = COLOR_BLACK, COLOR_WHITE
-
-    st.markdown(f"""
+def render_bento_issue(row):
+    return f"""
     <div class="bento-box">
-        <div style="margin-bottom: 1rem;">
-            <span class="badge" style="background:{bg_imp}; color:{tx_imp};">{row['impact_level']} Impact</span>
-            <span class="badge" style="background:{bg_stat}; color:{tx_stat};">{row['status']}</span>
+        <div>
+            <span class="badge badge-Impact">Impact: {row['impact_level']}</span>
+            <span class="badge badge-{row['status']}">{row['status']}</span>
         </div>
         <div class="issue-title">{row['title']}</div>
-        <div class="issue-meta">Proyek: {row['project_name']} • Kategori: {row['category']} • {row['upload_date']}</div>
+        <div class="issue-meta">{row['project_name']} | {row['category']} | {row['upload_date']}</div>
         
-        <div class="section-label">Ringkasan</div>
-        <p style="font-size: 1.05rem; line-height: 1.6;">{row['summary']}</p>
+        <div class="issue-section-title">Ringkasan Isu</div>
+        <div class="issue-text">{row['summary']}</div>
         
-        <div class="section-label">Akar Masalah</div>
-        <p style="font-size: 1.05rem; line-height: 1.6;">{row['root_cause']}</p>
+        <div class="issue-section-title">Akar Masalah</div>
+        <div class="issue-text">{row['root_cause']}</div>
         
-        <div class="section-label">Rekomendasi</div>
-        <p style="font-size: 1.05rem; line-height: 1.6; font-weight: 600;">{row['recommendation']}</p>
+        <div class="issue-section-title">Rekomendasi Strategis</div>
+        <div class="issue-text" style="font-weight: 600;">{row['recommendation']}</div>
     </div>
-    """, unsafe_allow_html=True)
-
+    """
 
 # ==============================================================================
-# 6. HALAMAN & LOGIKA APLIKASI
+# 5. HALAMAN UTAMA & LOGIKA TAB
 # ==============================================================================
-
 def main():
-    st.set_page_config(page_title="Strategic KM Platform", layout="wide", initial_sidebar_state="collapsed")
+    st.set_page_config(page_title="Strategic Knowledge", layout="wide")
     init_db()
-    load_custom_css()
+    inject_custom_css()
 
-    # Macro Typography Asimetris Header
+    # Tipografi Makro
     st.markdown("""
-    <div class="hero-container">
-        <div class="hero-title">Knowledge.<br>Decoded.</div>
-        <div class="hero-subtitle">Mendokumentasikan kompleksitas masalah menjadi keputusan presisi.</div>
+    <div style="background-color: transparent;">
+        <div class="macro-title">Knowledge.<br>Decoded.</div>
+        <div class="macro-subtitle">Dokumentasi strategis. Analisis mendalam. Keputusan presisi.</div>
     </div>
     """, unsafe_allow_html=True)
 
-    df = fetch_all_issues()
+    df = fetch_issues()
 
-    tabs = st.tabs(["Dashboard", "Telusuri Isu", "Unggah Baru", "Approval (PMO)"])
+    # Tabs (Tanpa Emoji)
+    tab1, tab2, tab3, tab4 = st.tabs(["Dashboard", "Telusuri", "Unggah Baru", "Approval PMO"])
 
     # --- TAB 1: DASHBOARD ---
-    with tabs[0]:
-        render_kpi_bento(df)
+    with tab1:
+        st.write("") # Spacer
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.markdown(render_bento_kpi(len(df), "Total Entri Isu"), unsafe_allow_html=True)
+        with col2:
+            verified_count = len(df[df["status"] == STATUS_VERIFIED])
+            st.markdown(render_bento_kpi(verified_count, "Telah Diverifikasi"), unsafe_allow_html=True)
+        with col3:
+            high_impact_count = len(df[df["impact_level"] == "Tinggi"])
+            st.markdown(render_bento_kpi(high_impact_count, "Dampak Tingkat Tinggi"), unsafe_allow_html=True)
+
         if not df.empty:
-            col1, col2 = st.columns(2)
-            with col1:
-                st.markdown("### Komposisi Isu")
-                fig = px.pie(df, names="category", hole=0.7, color_discrete_sequence=px.colors.sequential.Greys_r)
-                fig.update_layout(showlegend=False, height=400)
-                st.plotly_chart(fig, use_container_width=True)
-            with col2:
-                st.markdown("### Tren Risiko")
-                fig2 = px.histogram(df, x="impact_level", color_discrete_sequence=[COLOR_BLACK])
-                fig2.update_layout(xaxis_title="", yaxis_title="", height=400)
-                st.plotly_chart(fig2, use_container_width=True)
+            c1, c2 = st.columns([1, 1])
+            with c1:
+                st.markdown("<div class='bento-box'>", unsafe_allow_html=True)
+                st.markdown("<div class='issue-title' style='margin-top:0; font-size:1.4rem;'>Distribusi Kategori</div>", unsafe_allow_html=True)
+                fig_pie = px.pie(df, names="category", hole=0.7)
+                fig_pie.update_layout(showlegend=False, margin=dict(t=20, b=20, l=20, r=20), height=350)
+                st.plotly_chart(fig_pie, use_container_width=True)
+                st.markdown("</div>", unsafe_allow_html=True)
+            with c2:
+                st.markdown("<div class='bento-box'>", unsafe_allow_html=True)
+                st.markdown("<div class='issue-title' style='margin-top:0; font-size:1.4rem;'>Level Dampak</div>", unsafe_allow_html=True)
+                fig_bar = px.histogram(df, x="impact_level")
+                fig_bar.update_layout(xaxis_title="", yaxis_title="", margin=dict(t=20, b=20, l=20, r=20), height=350)
+                st.plotly_chart(fig_bar, use_container_width=True)
+                st.markdown("</div>", unsafe_allow_html=True)
 
     # --- TAB 2: TELUSURI ---
-    with tabs[1]:
-        search_q = st.text_input("Pencarian Eksekutif", placeholder="Ketik kata kunci masalah atau proyek...", label_visibility="collapsed")
+    with tab2:
+        st.write("")
+        search_query = st.text_input("Pencarian", placeholder="Ketik kata kunci judul, proyek, atau masalah...")
         
         filtered_df = df
-        if search_q:
-            filtered_df = df[df.astype(str).apply(lambda x: x.str.contains(search_q, case=False, na=False)).any(axis=1)]
+        if search_query:
+            filtered_df = df[df.astype(str).apply(lambda x: x.str.contains(search_query, case=False, na=False)).any(axis=1)]
             
-        for _, row in filtered_df.iterrows():
-            render_issue_bento(row)
+        if filtered_df.empty:
+            st.markdown("<div style='margin-top:2rem; font-size:1.2rem; font-weight:600;'>Tidak ada hasil ditemukan.</div>", unsafe_allow_html=True)
+        else:
+            # Asimetris yang Seimbang: Layout Grid
+            cols = st.columns(2)
+            for index, row in filtered_df.iterrows():
+                with cols[index % 2]:
+                    st.markdown(render_bento_issue(row), unsafe_allow_html=True)
 
     # --- TAB 3: UNGGAH BARU ---
-    with tabs[2]:
+    with tab3:
+        st.write("")
         st.markdown("<div class='bento-box'>", unsafe_allow_html=True)
-        st.markdown("### Inisiasi Data Baru")
-        file = st.file_uploader("Unggah PDF/Word untuk ekstraksi otomatis (Opsional)")
+        st.markdown("<div class='issue-title' style='margin-top:0;'>Entri Isu Strategis Baru</div>", unsafe_allow_html=True)
+        st.markdown("<div class='issue-meta' style='margin-bottom:2rem;'>Lengkapi informasi secara spesifik dan objektif.</div>", unsafe_allow_html=True)
         
-        with st.form("bento_form"):
-            t = st.text_input("Judul Isu")
-            c1, c2 = st.columns(2)
-            with c1:
-                p = st.text_input("Nama Proyek")
-                cat = st.selectbox("Kategori", CATEGORY_OPTIONS)
-            with c2:
-                imp = st.selectbox("Dampak", IMPACT_LEVELS)
-                up = st.text_input("Pengunggah")
+        with st.form("form_unggah", clear_on_submit=True):
+            col_a, col_b = st.columns(2)
+            with col_a:
+                input_title = st.text_input("Judul Isu")
+                input_project = st.text_input("Nama Proyek / Departemen")
+                input_category = st.selectbox("Kategori Isu", CATEGORY_OPTIONS)
+            with col_b:
+                input_impact = st.selectbox("Tingkat Dampak", IMPACT_LEVELS)
+                st.write("") # Spacer layout
+                st.write("")
             
-            s = st.text_area("Ringkasan Isu")
-            rc = st.text_area("Akar Masalah")
-            rec = st.text_area("Rekomendasi")
+            input_summary = st.text_area("Ringkasan Isu", height=120)
+            input_root_cause = st.text_area("Akar Masalah (Root Cause)", height=120)
+            input_recommendation = st.text_area("Rekomendasi Tindak Lanjut", height=120)
             
-            if st.form_submit_button("Simpan Isu"):
-                insert_issue({"title": t, "project_name": p, "category": cat, "impact_level": imp, "summary": s, "root_cause": rc, "recommendation": rec, "uploader": up})
-                st.success("Tersimpan!")
+            st.markdown("<br>", unsafe_allow_html=True)
+            submitted = st.form_submit_button("Simpan Data")
+            
+            if submitted:
+                if input_title and input_summary:
+                    data = {
+                        "title": input_title,
+                        "project": input_project,
+                        "category": input_category,
+                        "impact": input_impact,
+                        "summary": input_summary,
+                        "root_cause": input_root_cause,
+                        "recommendation": input_recommendation
+                    }
+                    if insert_issue(data):
+                        st.success("Entri berhasil disimpan dengan status Draft.")
+                else:
+                    st.error("Judul dan Ringkasan Isu wajib diisi.")
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # --- TAB 4: APPROVAL ---
-    with tabs[3]:
-        pending = df[df["status"] == STATUS_DRAFT]
-        if pending.empty:
-            st.info("Tidak ada tugas tinjauan.")
+    # --- TAB 4: APPROVAL PMO ---
+    with tab4:
+        st.write("")
+        df_draft = df[df["status"] == STATUS_DRAFT]
+        
+        if df_draft.empty:
+            st.markdown("<div style='margin-top:2rem; font-size:1.2rem; font-weight:600;'>Semua entri telah ditinjau.</div>", unsafe_allow_html=True)
         else:
-            for _, row in pending.iterrows():
-                with st.expander(f"{row['title']} - {row['upload_date']}"):
-                    st.write(f"**Akar:** {row['root_cause']}")
-                    st.write(f"**Rekomendasi:** {row['recommendation']}")
-                    colA, colB = st.columns(2)
-                    with colA:
-                        if st.button("Approve", key=f"y_{row['id']}", use_container_width=True):
-                            update_issue_status(row['id'], STATUS_VERIFIED)
+            for _, row in df_draft.iterrows():
+                st.markdown("<div class='bento-box'>", unsafe_allow_html=True)
+                st.markdown(f"<div class='issue-title' style='margin-top:0;'>{row['title']}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='issue-meta'>{row['project_name']} | {row['upload_date']}</div>", unsafe_allow_html=True)
+                
+                col_x, col_y = st.columns([3, 1])
+                with col_x:
+                    st.markdown(f"<div class='issue-text'>{row['summary']}</div>", unsafe_allow_html=True)
+                with col_y:
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        if st.button("Verify", key=f"v_{row['id']}", use_container_width=True):
+                            update_status(row['id'], STATUS_VERIFIED)
                             st.rerun()
-                    with colB:
-                        if st.button("Reject", key=f"n_{row['id']}", use_container_width=True):
-                            update_issue_status(row['id'], STATUS_REJECTED)
+                    with c2:
+                        if st.button("Reject", key=f"r_{row['id']}", use_container_width=True):
+                            update_status(row['id'], STATUS_REJECTED)
                             st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
