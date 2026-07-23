@@ -34,7 +34,6 @@ def create_apple_theme():
     template.layout.plot_bgcolor = "rgba(0,0,0,0)"
     template.layout.colorway = ["#111111", "#555555", "#888888", "#BDBDBD", "#E5E5E5"]
     
-    # Grid minimalis
     template.layout.xaxis.showgrid = False
     template.layout.yaxis.showgrid = True
     template.layout.yaxis.gridcolor = "rgba(0,0,0,0.05)"
@@ -74,7 +73,6 @@ class KnowledgeRepository:
             )
         """)
         
-        # Seed initial enterprise data
         cur.execute("SELECT COUNT(*) as cnt FROM knowledge")
         if cur.fetchone()['cnt'] == 0:
             cur.execute("""
@@ -150,17 +148,18 @@ def inject_enterprise_css():
         --border: rgba(0,0,0,0.04);
     }
 
-    html, body, [class*="css"], .stApp, p, div, span, label {
-        font-family: 'SF Pro Display', 'Inter', -apple-system, sans-serif !important;
-        background-color: var(--bg);
-        color: var(--text-primary);
+    /* Base Styling */
+    .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
+        background-color: var(--bg) !important;
+    }
+    h1, h2, h3, h4, p, span, label, div {
+        font-family: 'SF Pro Display', 'Inter', -apple-system, sans-serif;
     }
     
-    /* Hide Streamlit Defaults */
     header {visibility: hidden;}
     footer {visibility: hidden;}
     .block-container {
-        padding-top: 2rem !important;
+        padding-top: 1rem !important;
         padding-bottom: 6rem !important;
         max-width: 1200px !important;
     }
@@ -173,7 +172,6 @@ def inject_enterprise_css():
         line-height: 0.95;
         color: var(--text-primary);
         margin-bottom: 24px;
-        background-color: transparent !important;
     }
     .hero-sub {
         font-size: 24px;
@@ -182,7 +180,6 @@ def inject_enterprise_css():
         color: var(--text-secondary);
         margin-bottom: 80px;
         max-width: 600px;
-        background-color: transparent !important;
         line-height: 1.3;
     }
     .section-title {
@@ -190,41 +187,54 @@ def inject_enterprise_css():
         font-weight: 800;
         letter-spacing: -0.04em;
         margin-bottom: 32px;
-        background-color: transparent !important;
+        color: var(--text-primary);
     }
 
-    /* Bento Box Core */
+    /* HTML Custom Bento Box (Untuk Elemen Teks Saja) */
     .bento {
-        background-color: var(--surface) !important;
+        background-color: var(--surface);
         border-radius: 32px;
         padding: 40px;
         margin-bottom: 24px;
         border: 1px solid var(--border);
         box-shadow: 0 10px 30px rgba(0,0,0,0.02);
-        transition: .35s;
+        transition: transform .35s, box-shadow .35s;
         height: 100%;
     }
     .bento:hover {
         transform: translateY(-6px);
-        box-shadow: 0 45px 70px rgba(0,0,0,.08);
+        box-shadow: 0 45px 70px rgba(0,0,0,0.08);
     }
-    .bento * { background-color: transparent !important; }
+
+    /* Mengubah Container bawaan Streamlit menjadi Bento Box (Untuk Form & Chart) */
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        background-color: var(--surface) !important;
+        border-radius: 32px !important;
+        padding: 32px !important;
+        border: 1px solid var(--border) !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.02) !important;
+        transition: transform .35s, box-shadow .35s !important;
+    }
+    [data-testid="stVerticalBlockBorderWrapper"]:hover {
+        transform: translateY(-6px) !important;
+        box-shadow: 0 45px 70px rgba(0,0,0,0.08) !important;
+    }
 
     /* KPI Components */
-    .kpi-big-val { font-size: 96px; font-weight: 800; letter-spacing: -0.05em; line-height: 1; }
+    .kpi-big-val { font-size: 96px; font-weight: 800; letter-spacing: -0.05em; line-height: 1; color: var(--text-primary);}
     .kpi-big-title { font-size: 20px; font-weight: 600; color: var(--text-secondary); margin-top: 12px; }
     
-    .kpi-small-val { font-size: 48px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
+    .kpi-small-val { font-size: 48px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; color: var(--text-primary);}
     .kpi-small-title { font-size: 16px; font-weight: 600; color: var(--text-secondary); margin-top: 8px; }
 
     /* Knowledge Card */
-    .card-title { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.2; margin-bottom: 8px;}
+    .card-title { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.2; margin-bottom: 8px; color: var(--text-primary);}
     .card-meta { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 32px;}
     .card-section { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-top: 24px; margin-bottom: 8px; border-bottom: 1px solid #E5E5E5; padding-bottom: 4px;}
     .card-body { font-size: 17px; font-weight: 400; line-height: 1.6; color: var(--text-primary); }
 
     /* Badges */
-    .badge { display: inline-block; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; background-color: var(--bg) !important; color: var(--text-secondary) !important; margin-right: 8px;}
+    .badge { display: inline-block; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; background-color: var(--bg); color: var(--text-secondary); margin-right: 8px;}
     
     /* Forms: Tall, Rounded, Spaced */
     .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {
@@ -234,6 +244,7 @@ def inject_enterprise_css():
         padding: 16px 20px !important;
         font-size: 17px;
         font-weight: 500;
+        color: var(--text-primary) !important;
         min-height: 56px;
         margin-bottom: 12px;
         transition: .2s ease;
@@ -242,7 +253,6 @@ def inject_enterprise_css():
         border-color: var(--text-primary) !important;
         box-shadow: 0 0 0 2px var(--text-primary) !important;
     }
-    [data-testid="stForm"] { border: none !important; padding: 0 !important; }
 
     /* Buttons */
     .stButton button {
@@ -253,19 +263,19 @@ def inject_enterprise_css():
         font-weight: 600 !important;
         font-size: 17px !important;
         border: none !important;
-        transition: .35s !important;
+        transition: transform .3s, box-shadow .3s !important;
         width: 100%;
     }
     .stButton button:hover {
         transform: translateY(-2px);
         box-shadow: 0 15px 30px rgba(0,0,0,0.15) !important;
     }
-    .stButton button p { color: var(--surface) !important; }
+    .stButton button p { color: var(--surface) !important; margin:0;}
 
     /* Notification Component */
     .notification {
-        background-color: var(--text-primary) !important;
-        color: var(--surface) !important;
+        background-color: var(--text-primary);
+        color: var(--surface);
         padding: 20px 32px;
         border-radius: 16px;
         font-weight: 600;
@@ -280,8 +290,7 @@ def inject_enterprise_css():
         background-color: var(--surface) !important;
         border-right: 1px solid var(--border);
     }
-    .stRadio label { display: none; }
-    .stRadio div[role="radiogroup"] > label {
+    div[role="radiogroup"] > label {
         background-color: transparent !important;
         padding: 12px 20px;
         border-radius: 12px;
@@ -290,11 +299,11 @@ def inject_enterprise_css():
         color: var(--text-secondary);
         transition: .2s;
     }
-    .stRadio div[role="radiogroup"] > label[data-checked="true"] {
+    div[role="radiogroup"] > label[data-checked="true"] {
         background-color: var(--bg) !important;
-        color: var(--text-primary);
+        color: var(--text-primary) !important;
     }
-    .stRadio div[role="radiogroup"] > label:hover {
+    div[role="radiogroup"] > label:hover {
         background-color: var(--bg) !important;
     }
     </style>
@@ -366,7 +375,7 @@ def view_dashboard(repo):
         render_empty_state()
         return
 
-    # Executive KPI (Bento Grid)
+    # Executive KPI
     left, right = st.columns([2.2, 1])
     with left:
         render_big_kpi("Total Knowledge Base", len(df))
@@ -379,20 +388,22 @@ def view_dashboard(repo):
             high_impact = len(df[df['impact'] == 'High'])
             render_small_kpi("High Impact", high_impact)
 
-    # Analytics Zone
+    # Analytics Zone (Menggunakan border=True agar disulap jadi Bento oleh CSS)
+    st.write("")
     c1, c2 = st.columns([1, 1])
     with c1:
-        st.markdown("<div class='bento'><div class='card-title' style='font-size: 20px;'>Status Distribution</div>", unsafe_allow_html=True)
-        fig1 = px.pie(df, names="status", hole=0.8)
-        fig1.update_layout(showlegend=False, height=300, margin=dict(t=10, b=10, l=10, r=10))
-        st.plotly_chart(fig1, use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+        with st.container(border=True):
+            st.markdown("<div class='card-title' style='font-size: 20px;'>Status Distribution</div>", unsafe_allow_html=True)
+            fig1 = px.pie(df, names="status", hole=0.8)
+            fig1.update_layout(showlegend=False, height=300, margin=dict(t=10, b=10, l=10, r=10))
+            st.plotly_chart(fig1, use_container_width=True)
+            
     with c2:
-        st.markdown("<div class='bento'><div class='card-title' style='font-size: 20px;'>Impact Analysis</div>", unsafe_allow_html=True)
-        fig2 = px.histogram(df, x="impact")
-        fig2.update_layout(xaxis_title="", yaxis_title="", height=300, margin=dict(t=10, b=10, l=10, r=10))
-        st.plotly_chart(fig2, use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+        with st.container(border=True):
+            st.markdown("<div class='card-title' style='font-size: 20px;'>Impact Analysis</div>", unsafe_allow_html=True)
+            fig2 = px.histogram(df, x="impact")
+            fig2.update_layout(xaxis_title="", yaxis_title="", height=300, margin=dict(t=10, b=10, l=10, r=10))
+            st.plotly_chart(fig2, use_container_width=True)
 
 def view_browse(repo):
     st.markdown("<div class='section-title'>Browse Repository</div>", unsafe_allow_html=True)
@@ -413,35 +424,35 @@ def view_browse(repo):
 def view_upload(repo):
     st.markdown("<div class='section-title'>New Knowledge Entry</div>", unsafe_allow_html=True)
     
-    st.markdown("<div class='bento'>", unsafe_allow_html=True)
-    with st.form("entry_form"):
-        title = st.text_input("Title", placeholder="Entry Title")
-        
-        c1, c2 = st.columns(2)
-        with c1:
-            project = st.text_input("Project", placeholder="Project Name")
-            category = st.selectbox("Category", CATEGORY_OPTIONS)
-        with c2:
-            uploader = st.text_input("Uploader", placeholder="Your Name")
-            impact = st.selectbox("Impact", IMPACT_LEVELS)
+    # Bungkus form ke dalam bento container
+    with st.container(border=True):
+        with st.form("entry_form", border=False):
+            title = st.text_input("Title", placeholder="Entry Title")
             
-        summary = st.text_area("Summary", placeholder="Brief description...")
-        root_cause = st.text_area("Root Cause", placeholder="Underlying issue...")
-        recommendation = st.text_area("Recommendation", placeholder="Action plan...")
-        
-        st.write("")
-        if st.form_submit_button("Save Entry"):
-            if title and summary:
-                data = {
-                    "title": title, "project": project, "category": category,
-                    "impact": impact, "summary": summary, "root_cause": root_cause,
-                    "recommendation": recommendation, "uploader": uploader
-                }
-                if repo.insert(data):
-                    render_notification("Entry successfully saved.")
-            else:
-                st.error("Title and Summary are required.")
-    st.markdown("</div>", unsafe_allow_html=True)
+            c1, c2 = st.columns(2)
+            with c1:
+                project = st.text_input("Project", placeholder="Project Name")
+                category = st.selectbox("Category", CATEGORY_OPTIONS)
+            with c2:
+                uploader = st.text_input("Uploader", placeholder="Your Name")
+                impact = st.selectbox("Impact", IMPACT_LEVELS)
+                
+            summary = st.text_area("Summary", placeholder="Brief description...")
+            root_cause = st.text_area("Root Cause", placeholder="Underlying issue...")
+            recommendation = st.text_area("Recommendation", placeholder="Action plan...")
+            
+            st.write("")
+            if st.form_submit_button("Save Entry"):
+                if title and summary:
+                    data = {
+                        "title": title, "project": project, "category": category,
+                        "impact": impact, "summary": summary, "root_cause": root_cause,
+                        "recommendation": recommendation, "uploader": uploader
+                    }
+                    if repo.insert(data):
+                        render_notification("Entry successfully saved.")
+                else:
+                    st.error("Title and Summary are required.")
 
 def view_approval(repo):
     st.markdown("<div class='section-title'>Knowledge Review</div>", unsafe_allow_html=True)
@@ -460,49 +471,46 @@ def view_approval(repo):
         return
 
     for _, row in pending_df.iterrows():
-        # Menampilkan dokumen bergaya Apple
         render_knowledge_card(row)
         
-        # Action Area di bawah card
-        st.markdown("<div class='bento' style='margin-top: -12px; padding: 24px 40px;'>", unsafe_allow_html=True)
-        notes = st.text_area("Reviewer Note", placeholder="Optional feedback...", key=f"note_{row['id']}")
-        
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("Reject", key=f"rej_{row['id']}"):
-                if repo.update_status(row['id'], "Rejected"):
-                    render_notification("Review completed: Rejected.")
-                    st.rerun()
-        with c2:
-            if st.button("Verify", key=f"ver_{row['id']}"):
-                if repo.update_status(row['id'], "Verified"):
-                    render_notification("Review completed: Verified.")
-                    st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
-
+        # Action workspace dengan kontainer asli
+        with st.container(border=True):
+            notes = st.text_area("Reviewer Note", placeholder="Optional feedback...", key=f"note_{row['id']}")
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("Reject", key=f"rej_{row['id']}"):
+                    if repo.update_status(row['id'], "Rejected"):
+                        render_notification("Review completed: Rejected.")
+                        st.rerun()
+            with c2:
+                if st.button("Verify", key=f"ver_{row['id']}"):
+                    if repo.update_status(row['id'], "Verified"):
+                        render_notification("Review completed: Verified.")
+                        st.rerun()
+        st.write("") # Memberi jarak antar isu
 
 # ==============================================================================
 # 5. MAIN ROUTING & SIDEBAR
 # ==============================================================================
 def main():
-    st.set_page_config(page_title="Enterprise KM", layout="wide")
+    st.set_page_config(page_title="Enterprise KM", layout="wide", initial_sidebar_state="expanded")
     create_apple_theme()
     inject_enterprise_css()
     
     repo = get_repository()
 
-    # Clean Sidebar
     with st.sidebar:
-        st.markdown("<div style='font-size: 14px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 24px; padding-left: 20px;'>Enterprise KM</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size: 14px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 24px; padding-left: 10px;'>Enterprise KM</div>", unsafe_allow_html=True)
         
+        # label_visibility="collapsed" mencegah judul radio muncul dua kali dan merusak UI
         navigation = st.radio(
-            "Navigation",
-            ["Dashboard", "Browse", "New Entry", "Approval"]
+            "Nav",
+            ["Dashboard", "Browse", "New Entry", "Approval"],
+            label_visibility="collapsed"
         )
         
-        st.markdown("<div style='margin-top: 60px; padding-left: 20px; font-size: 12px; font-weight: 600; color: var(--text-secondary);'>Repository<br>Version 1.0</div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top: 60px; padding-left: 10px; font-size: 12px; font-weight: 600; color: var(--text-secondary);'>Repository<br>Version 1.0</div>", unsafe_allow_html=True)
 
-    # Route Views
     if navigation == "Dashboard":
         view_dashboard(repo)
     elif navigation == "Browse":
