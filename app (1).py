@@ -199,17 +199,17 @@ def inject_enterprise_css():
         background-color: var(--bg) !important;
     }
     
-    /* 2. Safe Global Typography (Tanpa merusak icon bawaan) */
+    /* 2. Safe Global Typography */
     html, body, p, h1, h2, h3, h4, label {
         font-family: 'SF Pro Display', 'Inter', -apple-system, sans-serif !important;
     }
 
-    /* 3. Header Transparan & Hide Toolbar (Menu 3 Titik) */
-    [data-testid="stHeader"] {
-        background-color: transparent !important;
+    /* 3. Safe Header Management (Mencegah blokir klik) */
+    header { background-color: transparent !important; }
+    /* Hanya sembunyikan elemen kanan (Deploy, 3-dots, dsb) tanpa merusak sidebar */
+    [data-testid="stActionElements"], [data-testid="stToolbar"], .stAppDeployButton { 
+        display: none !important; 
     }
-    .stDeployButton { display: none !important; }
-    [data-testid="stToolbar"] { display: none !important; }
     footer { display: none !important; }
 
     /* 4. Ruang atas (Padding) agar judul tidak bertabrakan dengan tombol Sidebar */
@@ -473,12 +473,10 @@ def view_browse(repo):
 def view_upload(repo):
     st.markdown("<div class='section-title'>New Knowledge Entry</div>", unsafe_allow_html=True)
     
-    # Inisialisasi state untuk menampung hasil ekstrak AI
     if 'ai_summary' not in st.session_state: st.session_state.ai_summary = ""
     if 'ai_root' not in st.session_state: st.session_state.ai_root = ""
     if 'ai_rec' not in st.session_state: st.session_state.ai_rec = ""
     
-    # Bagian 1: Uploader Dokumen AI
     with st.container(border=True):
         st.markdown("<div class='card-title' style='font-size: 20px; margin-bottom: 16px;'>AI Document Parsing</div>", unsafe_allow_html=True)
         st.markdown("<div style='color: var(--text-secondary); margin-bottom: 16px; font-weight: 500;'>Upload PDF or Text document to automatically extract and populate the form below.</div>", unsafe_allow_html=True)
@@ -499,7 +497,6 @@ def view_upload(repo):
                     
     st.write("")
     
-    # Bagian 2: Form Input
     with st.container(border=True):
         with st.form("entry_form", border=False):
             title = st.text_input("Title", placeholder="Entry Title")
@@ -525,7 +522,6 @@ def view_upload(repo):
                         "recommendation": recommendation, "uploader": uploader
                     }
                     if repo.insert(data):
-                        # Bersihkan state setelah disubmit
                         st.session_state.ai_summary = ""
                         st.session_state.ai_root = ""
                         st.session_state.ai_rec = ""
@@ -570,7 +566,6 @@ def view_approval(repo):
 # 6. MAIN ROUTING & SIDEBAR
 # ==============================================================================
 def main():
-    # Set Sidebar menjadi Expanded secara default
     st.set_page_config(page_title="Enterprise KM", layout="wide", initial_sidebar_state="expanded")
     create_apple_theme()
     inject_enterprise_css()
