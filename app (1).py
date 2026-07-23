@@ -2,7 +2,7 @@
 """
 Enterprise Knowledge Management
 Design System: Apple Business / Minimalist Monochromatic
-Architecture: Object-Oriented, Cached Repository, Custom HTML Components
+Architecture: Object-Oriented, Cached Repository, AI Auto-Fill Document Parsing
 """
 
 import streamlit as st
@@ -12,9 +12,32 @@ import plotly.express as px
 import plotly.io as pio
 from datetime import datetime
 import os
+import io
+import re
 
 # ==============================================================================
-# 1. CORE CONFIGURATION & THEME
+# 1. OPTIONAL IMPORTS (DOCUMENT PARSING)
+# ==============================================================================
+try:
+    import pdfplumber
+    PDFPLUMBER_AVAILABLE = True
+except ImportError:
+    PDFPLUMBER_AVAILABLE = False
+
+try:
+    from pypdf import PdfReader
+    PYPDF_AVAILABLE = True
+except ImportError:
+    PYPDF_AVAILABLE = False
+
+try:
+    import docx
+    DOCX_AVAILABLE = True
+except ImportError:
+    DOCX_AVAILABLE = False
+
+# ==============================================================================
+# 2. CORE CONFIGURATION & THEME
 # ==============================================================================
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "km_enterprise.db")
 
@@ -25,8 +48,11 @@ CATEGORY_OPTIONS = [
     "Operations", "Other"
 ]
 
+KEYWORDS_SUMMARY = ["isu", "masalah", "kendala", "permasalahan", "issue", "problem", "hambatan", "deviation"]
+KEYWORDS_ROOT_CAUSE = ["akar masalah", "akar penyebab", "disebabkan", "root cause", "sumber masalah", "due to", "caused by"]
+KEYWORDS_RECOMMENDATION = ["rekomendasi", "solusi", "usulan", "tindak lanjut", "saran", "mitigasi", "action", "recommend"]
+
 def create_apple_theme():
-    """Mengatur tema Plotly agar monokrom dan menyatu dengan background"""
     font_family = "'SF Pro Display', 'Inter', -apple-system, sans-serif"
     template = pio.templates["plotly_white"]
     template.layout.font = dict(family=font_family, color="#111111", size=14)
@@ -42,7 +68,7 @@ def create_apple_theme():
     pio.templates.default = "apple_enterprise"
 
 # ==============================================================================
-# 2. DATA REPOSITORY (OOP)
+# 3. DATA REPOSITORY (OOP)
 # ==============================================================================
 class KnowledgeRepository:
     def __init__(self, db_path):
@@ -72,24 +98,6 @@ class KnowledgeRepository:
                 upload_date TEXT
             )
         """)
-        
-        cur.execute("SELECT COUNT(*) as cnt FROM knowledge")
-        if cur.fetchone()['cnt'] == 0:
-            cur.execute("""
-                INSERT INTO knowledge (title, project, category, impact, status, summary, root_cause, recommendation, uploader, upload_date)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                "Field Activity Cost Estimation Deviation",
-                "Standard Costing Implementation",
-                "Financial & Budget",
-                "High",
-                "Verified",
-                "Significant deviation observed in field activity cost estimation compared to previous quarterly realization.",
-                "Initial assumptions failed to account for changes in local tax regulations and inflation affecting direct operational costs.",
-                "Recalibrate the 117 activity cost models and establish a strict quarterly index update protocol.",
-                "System Executor",
-                datetime.now().strftime("%d %B %Y")
-            ))
         conn.commit()
         conn.close()
 
@@ -133,7 +141,45 @@ def get_repository():
     return KnowledgeRepository(DB_PATH)
 
 # ==============================================================================
-# 3. UI COMPONENTS & CSS (MACRO TYPOGRAPHY & BENTO)
+# 4. AI AUTO-FILL ENGINE
+# ==============================================================================
+def parse_document(uploaded_file) -> str:
+    if not uploaded_file: return ""
+    try:
+        filename = uploaded_file.name.lower()
+        if filename.endswith(".pdf"):
+            if PDFPLUMBER_AVAILABLE:
+                with pdfplumber.open(io.BytesIO(uploaded_file.read())) as pdf:
+                    return "\n".join([p.extract_text() for p in pdf.pages if p.extract_text()])
+            elif PYPDF_AVAILABLE:
+                reader = PdfReader(io.BytesIO(uploaded_file.read()))
+                return "\n".join([p.extract_text() for p in reader.pages if p.extract_text()])
+        elif filename.endswith(".docx") and DOCX_AVAILABLE:
+            document = docx.Document(io.BytesIO(uploaded_file.read()))
+            return "\n".join([p.text for p in document.paragraphs if p.text.strip()])
+        elif filename.endswith(".txt"):
+            return uploaded_file.read().decode("utf-8", errors="ignore")
+    except Exception:
+        pass
+    return ""
+
+def extract_knowledge(text: str) -> dict:
+    res = {"summary": "", "root_cause": "", "recommendation": ""}
+    if not text: return res
+    
+    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if len(s) > 15]
+    
+    def extract_by_keywords(kw_list):
+        matched = [s for s in sentences if any(kw in s.lower() for kw in kw_list)]
+        return " ".join(matched[:3])
+        
+    res["summary"] = extract_by_keywords(KEYWORDS_SUMMARY) or (" ".join(sentences[:2]) if sentences else "")
+    res["root_cause"] = extract_by_keywords(KEYWORDS_ROOT_CAUSE)
+    res["recommendation"] = extract_by_keywords(KEYWORDS_RECOMMENDATION)
+    return res
+
+# ==============================================================================
+# 5. UI COMPONENTS & CSS (MACRO TYPOGRAPHY & BENTO)
 # ==============================================================================
 def inject_enterprise_css():
     st.markdown("""
@@ -148,7 +194,6 @@ def inject_enterprise_css():
         --border: rgba(0,0,0,0.04);
     }
 
-    /* Base Styling */
     .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
         background-color: var(--bg) !important;
     }
@@ -164,7 +209,6 @@ def inject_enterprise_css():
         max-width: 1200px !important;
     }
 
-    /* Typography Hierarchy */
     .hero-text {
         font-size: 88px;
         font-weight: 900;
@@ -190,7 +234,6 @@ def inject_enterprise_css():
         color: var(--text-primary);
     }
 
-    /* HTML Custom Bento Box (Untuk Elemen Teks Saja) */
     .bento {
         background-color: var(--surface);
         border-radius: 32px;
@@ -206,7 +249,6 @@ def inject_enterprise_css():
         box-shadow: 0 45px 70px rgba(0,0,0,0.08);
     }
 
-    /* Mengubah Container bawaan Streamlit menjadi Bento Box (Untuk Form & Chart) */
     [data-testid="stVerticalBlockBorderWrapper"] {
         background-color: var(--surface) !important;
         border-radius: 32px !important;
@@ -220,23 +262,19 @@ def inject_enterprise_css():
         box-shadow: 0 45px 70px rgba(0,0,0,0.08) !important;
     }
 
-    /* KPI Components */
     .kpi-big-val { font-size: 96px; font-weight: 800; letter-spacing: -0.05em; line-height: 1; color: var(--text-primary);}
     .kpi-big-title { font-size: 20px; font-weight: 600; color: var(--text-secondary); margin-top: 12px; }
     
     .kpi-small-val { font-size: 48px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; color: var(--text-primary);}
     .kpi-small-title { font-size: 16px; font-weight: 600; color: var(--text-secondary); margin-top: 8px; }
 
-    /* Knowledge Card */
     .card-title { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.2; margin-bottom: 8px; color: var(--text-primary);}
     .card-meta { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 32px;}
     .card-section { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-top: 24px; margin-bottom: 8px; border-bottom: 1px solid #E5E5E5; padding-bottom: 4px;}
     .card-body { font-size: 17px; font-weight: 400; line-height: 1.6; color: var(--text-primary); }
 
-    /* Badges */
     .badge { display: inline-block; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; background-color: var(--bg); color: var(--text-secondary); margin-right: 8px;}
     
-    /* Forms: Tall, Rounded, Spaced */
     .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {
         background-color: var(--bg) !important;
         border: 1px solid var(--border) !important;
@@ -245,8 +283,6 @@ def inject_enterprise_css():
         font-size: 17px;
         font-weight: 500;
         color: var(--text-primary) !important;
-        min-height: 56px;
-        margin-bottom: 12px;
         transition: .2s ease;
     }
     .stTextInput input:focus, .stTextArea textarea:focus, .stSelectbox div[data-baseweb="select"] > div:focus-within {
@@ -254,7 +290,6 @@ def inject_enterprise_css():
         box-shadow: 0 0 0 2px var(--text-primary) !important;
     }
 
-    /* Buttons */
     .stButton button {
         background-color: var(--text-primary) !important;
         color: var(--surface) !important;
@@ -285,7 +320,6 @@ def inject_enterprise_css():
         box-shadow: 0 20px 40px rgba(0,0,0,0.1);
     }
 
-    /* Clean Sidebar Nav */
     [data-testid="stSidebar"] {
         background-color: var(--surface) !important;
         border-right: 1px solid var(--border);
@@ -304,6 +338,13 @@ def inject_enterprise_css():
         color: var(--text-primary) !important;
     }
     div[role="radiogroup"] > label:hover {
+        background-color: var(--bg) !important;
+    }
+    
+    /* Modifikasi Uploader bawaan Streamlit agar bersih */
+    [data-testid="stFileUploadDropzone"] {
+        border-radius: 18px !important;
+        border: 1px dashed var(--text-secondary) !important;
         background-color: var(--bg) !important;
     }
     </style>
@@ -357,9 +398,8 @@ def render_empty_state():
     </div>
     """, unsafe_allow_html=True)
 
-
 # ==============================================================================
-# 4. PAGE VIEWS
+# 6. PAGE VIEWS
 # ==============================================================================
 def view_dashboard(repo):
     st.markdown("""
@@ -372,7 +412,6 @@ def view_dashboard(repo):
         render_empty_state()
         return
 
-    # Executive KPI
     left, right = st.columns([2.2, 1])
     with left:
         render_big_kpi("Total Knowledge Base", len(df))
@@ -385,7 +424,6 @@ def view_dashboard(repo):
             high_impact = len(df[df['impact'] == 'High'])
             render_small_kpi("High Impact", high_impact)
 
-    # Analytics Zone (Menggunakan border=True agar disulap jadi Bento oleh CSS)
     st.write("")
     c1, c2 = st.columns([1, 1])
     with c1:
@@ -421,7 +459,33 @@ def view_browse(repo):
 def view_upload(repo):
     st.markdown("<div class='section-title'>New Knowledge Entry</div>", unsafe_allow_html=True)
     
-    # Bungkus form ke dalam bento container
+    # Inisialisasi state untuk menampung hasil ekstrak AI
+    if 'ai_summary' not in st.session_state: st.session_state.ai_summary = ""
+    if 'ai_root' not in st.session_state: st.session_state.ai_root = ""
+    if 'ai_rec' not in st.session_state: st.session_state.ai_rec = ""
+    
+    # Bagian 1: Uploader Dokumen AI
+    with st.container(border=True):
+        st.markdown("<div class='card-title' style='font-size: 20px; margin-bottom: 16px;'>AI Document Parsing</div>", unsafe_allow_html=True)
+        st.markdown("<div style='color: var(--text-secondary); margin-bottom: 16px; font-weight: 500;'>Upload PDF or Text document to automatically extract and populate the form below.</div>", unsafe_allow_html=True)
+        
+        uploaded_file = st.file_uploader("Format: PDF, DOCX, TXT", type=["pdf", "txt", "docx"], label_visibility="collapsed")
+        
+        if uploaded_file and st.button("Analyze Document"):
+            with st.spinner("Extracting knowledge..."):
+                raw_text = parse_document(uploaded_file)
+                if raw_text:
+                    ai_result = extract_knowledge(raw_text)
+                    st.session_state.ai_summary = ai_result["summary"]
+                    st.session_state.ai_root = ai_result["root_cause"]
+                    st.session_state.ai_rec = ai_result["recommendation"]
+                    render_notification("Document analyzed. Form populated below.")
+                else:
+                    st.error("Could not extract text from document.")
+                    
+    st.write("")
+    
+    # Bagian 2: Form Input
     with st.container(border=True):
         with st.form("entry_form", border=False):
             title = st.text_input("Title", placeholder="Entry Title")
@@ -434,9 +498,9 @@ def view_upload(repo):
                 uploader = st.text_input("Uploader", placeholder="Your Name")
                 impact = st.selectbox("Impact", IMPACT_LEVELS)
                 
-            summary = st.text_area("Summary", placeholder="Brief description...")
-            root_cause = st.text_area("Root Cause", placeholder="Underlying issue...")
-            recommendation = st.text_area("Recommendation", placeholder="Action plan...")
+            summary = st.text_area("Summary", value=st.session_state.ai_summary, placeholder="Brief description...", height=120)
+            root_cause = st.text_area("Root Cause", value=st.session_state.ai_root, placeholder="Underlying issue...", height=120)
+            recommendation = st.text_area("Recommendation", value=st.session_state.ai_rec, placeholder="Action plan...", height=120)
             
             st.write("")
             if st.form_submit_button("Save Entry"):
@@ -447,6 +511,10 @@ def view_upload(repo):
                         "recommendation": recommendation, "uploader": uploader
                     }
                     if repo.insert(data):
+                        # Bersihkan state setelah disubmit
+                        st.session_state.ai_summary = ""
+                        st.session_state.ai_root = ""
+                        st.session_state.ai_rec = ""
                         render_notification("Entry successfully saved.")
                 else:
                     st.error("Title and Summary are required.")
@@ -469,8 +537,6 @@ def view_approval(repo):
 
     for _, row in pending_df.iterrows():
         render_knowledge_card(row)
-        
-        # Action workspace dengan kontainer asli
         with st.container(border=True):
             notes = st.text_area("Reviewer Note", placeholder="Optional feedback...", key=f"note_{row['id']}")
             c1, c2 = st.columns(2)
@@ -484,10 +550,10 @@ def view_approval(repo):
                     if repo.update_status(row['id'], "Verified"):
                         render_notification("Review completed: Verified.")
                         st.rerun()
-        st.write("") # Memberi jarak antar isu
+        st.write("")
 
 # ==============================================================================
-# 5. MAIN ROUTING & SIDEBAR
+# 6. MAIN ROUTING & SIDEBAR
 # ==============================================================================
 def main():
     st.set_page_config(page_title="Enterprise KM", layout="wide", initial_sidebar_state="expanded")
@@ -499,7 +565,6 @@ def main():
     with st.sidebar:
         st.markdown("<div style='font-size: 14px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 24px; padding-left: 10px;'>Enterprise KM</div>", unsafe_allow_html=True)
         
-        # label_visibility="collapsed" mencegah judul radio muncul dua kali dan merusak UI
         navigation = st.radio(
             "Nav",
             ["Dashboard", "Browse", "New Entry", "Approval"],
