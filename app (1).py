@@ -327,24 +327,21 @@ def render_small_kpi(title, value):
 
 def render_knowledge_card(row):
     st.markdown(f"""
-    <div class="bento">
-        <div class="card-title">{row['title']}</div>
-        <div class="card-meta">{row['project']} &nbsp;|&nbsp; {row['upload_date']}</div>
-        <div style="margin-bottom: 32px;">
-            <span class="badge">{row['status']}</span>
-            <span class="badge">{row['impact']} Impact</span>
-            <span class="badge">{row['category']}</span>
-        </div>
-        
-        <div class="card-section">Summary</div>
-        <div class="card-body">{row['summary']}</div>
-        
-        <div class="card-section">Root Cause</div>
-        <div class="card-body">{row['root_cause']}</div>
-        
-        <div class="card-section">Recommendation</div>
-        <div class="card-body" style="font-weight: 600;">{row['recommendation']}</div>
+<div class="bento">
+    <div class="card-title">{row['title']}</div>
+    <div class="card-meta">{row['project']} &nbsp;|&nbsp; {row['upload_date']}</div>
+    <div style="margin-bottom: 32px;">
+        <span class="badge">{row['status']}</span>
+        <span class="badge">{row['impact']} Impact</span>
+        <span class="badge">{row['category']}</span>
     </div>
+    <div class="card-section">Summary</div>
+    <div class="card-body">{row['summary']}</div>
+    <div class="card-section">Root Cause</div>
+    <div class="card-body">{row['root_cause']}</div>
+    <div class="card-section">Recommendation</div>
+    <div class="card-body" style="font-weight: 600;">{row['recommendation']}</div>
+</div>
     """, unsafe_allow_html=True)
 
 def render_notification(message):
