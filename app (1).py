@@ -201,8 +201,14 @@ def inject_enterprise_css():
         font-family: 'SF Pro Display', 'Inter', -apple-system, sans-serif;
     }
     
-    header {visibility: hidden;}
-    footer {visibility: hidden;}
+   /* Buat header transparan, tapi jangan disembunyikan agar tombol sidebar tetap ada */
+    header { background-color: transparent !important; }
+    
+    /* Sembunyikan tombol "Deploy" dan menu 3 titik di kanan atas */
+    .stDeployButton { display: none !important; }
+    [data-testid="stToolbar"] { visibility: hidden !important; }
+    
+    footer { visibility: hidden; }
     .block-container {
         padding-top: 1rem !important;
         padding-bottom: 6rem !important;
