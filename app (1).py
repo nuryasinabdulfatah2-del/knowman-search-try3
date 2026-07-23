@@ -3,7 +3,7 @@
 PT Bukit Asam Knowledge Management System
 Design System: Clean Bento Box + Semantic Soft Colors
 Typography: Caveat (Handwritten Headers) + Inter (Clean Body)
-Architecture: Object-Oriented, Cached Repository, Feedback Loop (Revision Workspace)
+Architecture: Object-Oriented, Cached Repository, Feedback Loop, AI Revise Parsing
 """
 
 import streamlit as st
@@ -165,8 +165,9 @@ class KnowledgeRepository:
         except Exception:
             return False
 
+# Memaksa cache dibersihkan untuk menghindari TypeError versi sebelumnya
 @st.cache_resource
-def get_repository_2():
+def get_repository_3():
     return KnowledgeRepository(DB_PATH)
 
 # ==============================================================================
@@ -245,13 +246,11 @@ def inject_enterprise_css():
     
     .stApp, [data-testid="stAppViewContainer"] { background-color: var(--bg) !important; }
     
-    /* SAFE HEADER MANAGEMENT */
     header[data-testid="stHeader"] { 
         background-color: transparent !important; 
-        z-index: 99 !important; /* Aman, tidak memblokir layar */
+        z-index: 99 !important; 
     }
     
-    /* EXPLICIT SIDEBAR TOGGLE BUTTON (TOMBOL ANTI-HILANG) */
     [data-testid="collapsedControl"] {
         display: flex !important;
         visibility: visible !important;
@@ -610,6 +609,13 @@ def view_revision(repo):
         return
 
     for _, row in rev_df.iterrows():
+        rid = row['id']
+        
+        # Inisialisasi memori AI khusus untuk tiap kotak revisi
+        if f'rev_sum_{rid}' not in st.session_state: st.session_state[f'rev_sum_{rid}'] = row['summary']
+        if f'rev_root_{rid}' not in st.session_state: st.session_state[f'rev_root_{rid}'] = row['root_cause']
+        if f'rev_rec_{rid}' not in st.session_state: st.session_state[f'rev_rec_{rid}'] = row['recommendation']
+
         with st.container(border=True):
             st.markdown(f"<div class='card-title' style='font-size: 24px;'>{row['title']}</div>", unsafe_allow_html=True)
             
@@ -620,20 +626,37 @@ def view_revision(repo):
             </div>
             """, unsafe_allow_html=True)
             
-            with st.form(f"form_rev_{row['id']}", border=False):
-                title = st.text_input("Title", value=row['title'], key=f"t_{row['id']}")
+            st.markdown("<div style='font-size: 16px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px;'>Auto-Revise via Document</div>", unsafe_allow_html=True)
+            st.markdown("<div style='font-size: 14px; color: var(--text-secondary); margin-bottom: 12px;'>Upload a newly updated document to automatically rewrite the fields below.</div>", unsafe_allow_html=True)
+            
+            uploaded_rev = st.file_uploader("Format: PDF, DOCX, TXT", type=["pdf", "txt", "docx"], label_visibility="collapsed", key=f"up_rev_{rid}")
+            if uploaded_rev and st.button("Extract Revised Knowledge", key=f"btn_rev_{rid}"):
+                with st.spinner("Extracting..."):
+                    raw_text = parse_document(uploaded_rev)
+                    if raw_text:
+                        ai_result = extract_knowledge(raw_text)
+                        st.session_state[f'rev_sum_{rid}'] = ai_result["summary"]
+                        st.session_state[f'rev_root_{rid}'] = ai_result["root_cause"]
+                        st.session_state[f'rev_rec_{rid}'] = ai_result["recommendation"]
+                        render_notification("Fields successfully updated from new document!")
+                    else:
+                        st.error("Failed to extract data.")
+            
+            st.write("")
+            with st.form(f"form_rev_{rid}", border=False):
+                title = st.text_input("Title", value=row['title'])
                 c1, c2 = st.columns(2)
                 with c1:
-                    project = st.text_input("Project", value=row['project'], key=f"p_{row['id']}")
+                    project = st.text_input("Project", value=row['project'])
                     cat_idx = CATEGORY_OPTIONS.index(row['category']) if row['category'] in CATEGORY_OPTIONS else 0
-                    category = st.selectbox("Category", CATEGORY_OPTIONS, index=cat_idx, key=f"c_{row['id']}")
+                    category = st.selectbox("Category", CATEGORY_OPTIONS, index=cat_idx)
                 with c2:
                     imp_idx = IMPACT_LEVELS.index(row['impact']) if row['impact'] in IMPACT_LEVELS else 0
-                    impact = st.selectbox("Impact", IMPACT_LEVELS, index=imp_idx, key=f"i_{row['id']}")
+                    impact = st.selectbox("Impact", IMPACT_LEVELS, index=imp_idx)
                     
-                summary = st.text_area("Summary", value=row['summary'], height=100, key=f"s_{row['id']}")
-                root_cause = st.text_area("Root Cause", value=row['root_cause'], height=100, key=f"rc_{row['id']}")
-                recommendation = st.text_area("Recommendation", value=row['recommendation'], height=100, key=f"rec_{row['id']}")
+                summary = st.text_area("Summary", value=st.session_state[f'rev_sum_{rid}'], height=120)
+                root_cause = st.text_area("Root Cause", value=st.session_state[f'rev_root_{rid}'], height=120)
+                recommendation = st.text_area("Recommendation", value=st.session_state[f'rev_rec_{rid}'], height=120)
                 
                 st.write("")
                 if st.form_submit_button("Resubmit for Review"):
@@ -642,7 +665,10 @@ def view_revision(repo):
                         'impact': impact, 'summary': summary, 'root_cause': root_cause,
                         'recommendation': recommendation
                     }
-                    if repo.resubmit_record(row['id'], data):
+                    if repo.resubmit_record(rid, data):
+                        if f'rev_sum_{rid}' in st.session_state: del st.session_state[f'rev_sum_{rid}']
+                        if f'rev_root_{rid}' in st.session_state: del st.session_state[f'rev_root_{rid}']
+                        if f'rev_rec_{rid}' in st.session_state: del st.session_state[f'rev_rec_{rid}']
                         st.rerun()
 
 def view_approval(repo):
@@ -716,7 +742,7 @@ def main():
     create_apple_theme()
     inject_enterprise_css()
     
-    repo = get_repository_2()
+    repo = get_repository_3()
 
     with st.sidebar:
         st.markdown("<div style='font-size: 14px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 24px; padding-left: 10px; font-family: \"Inter\", sans-serif;'>PT Bukit Asam KM</div>", unsafe_allow_html=True)
