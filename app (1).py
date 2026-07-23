@@ -201,16 +201,18 @@ def inject_enterprise_css():
         font-family: 'SF Pro Display', 'Inter', -apple-system, sans-serif;
     }
     
-   /* Buat header transparan, tapi jangan disembunyikan agar tombol sidebar tetap ada */
+   /* Biarkan header transparan agar tombol sidebar tetap hidup */
     header { background-color: transparent !important; }
     
-    /* Sembunyikan tombol "Deploy" dan menu 3 titik di kanan atas */
+    /* Sembunyikan tombol "Deploy" dan titik tiga di pojok kanan */
     .stDeployButton { display: none !important; }
-    [data-testid="stToolbar"] { visibility: hidden !important; }
+    [data-testid="stToolbar"] { display: none !important; }
     
     footer { visibility: hidden; }
+    
+    /* Perbesar padding-top agar judul tidak bertabrakan dengan tombol sidebar */
     .block-container {
-        padding-top: 1rem !important;
+        padding-top: 5rem !important; 
         padding-bottom: 6rem !important;
         max-width: 1200px !important;
     }
