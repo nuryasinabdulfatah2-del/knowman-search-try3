@@ -3,7 +3,7 @@
 PT Bukit Asam Knowledge Management System
 Design System: Clean Bento Box + Semantic Soft Colors
 Typography: Caveat (Handwritten Headers) + Inter (Clean Body)
-Architecture: Object-Oriented, Cached Repository, AI Auto-Fill, Data Export
+Architecture: Object-Oriented, Cached Repository, Feedback Loop (Revision Workspace)
 """
 
 import streamlit as st
@@ -70,7 +70,7 @@ def create_apple_theme():
     pio.templates.default = "apple_enterprise"
 
 # ==============================================================================
-# 3. DATA REPOSITORY (OOP)
+# 3. DATA REPOSITORY (OOP) WITH REVISION SUPPORT
 # ==============================================================================
 class KnowledgeRepository:
     def __init__(self, db_path):
@@ -100,6 +100,16 @@ class KnowledgeRepository:
                 upload_date TEXT
             )
         """)
+        
+        # Migrasi Skema: Tambahkan kolom reviewer_notes jika belum ada (Safe Upgrade)
+        cur.execute("PRAGMA table_info(knowledge)")
+        columns = [column[1] for column in cur.fetchall()]
+        if 'reviewer_notes' not in columns:
+            try:
+                cur.execute("ALTER TABLE knowledge ADD COLUMN reviewer_notes TEXT DEFAULT ''")
+            except Exception:
+                pass
+                
         conn.commit()
         conn.close()
 
@@ -114,8 +124,8 @@ class KnowledgeRepository:
             conn = self.get_connection()
             cur = conn.cursor()
             cur.execute("""
-                INSERT INTO knowledge (title, project, category, impact, status, summary, root_cause, recommendation, uploader, upload_date)
-                VALUES (?, ?, ?, ?, 'Pending Review', ?, ?, ?, ?, ?)
+                INSERT INTO knowledge (title, project, category, impact, status, summary, root_cause, recommendation, uploader, upload_date, reviewer_notes)
+                VALUES (?, ?, ?, ?, 'Pending Review', ?, ?, ?, ?, ?, '')
             """, (
                 data['title'], data['project'], data['category'], data['impact'], 
                 data['summary'], data['root_cause'], data['recommendation'], 
@@ -127,11 +137,29 @@ class KnowledgeRepository:
         except Exception:
             return False
 
-    def update_status(self, record_id, new_status):
+    def update_status(self, record_id, new_status, notes=""):
         try:
             conn = self.get_connection()
             cur = conn.cursor()
-            cur.execute("UPDATE knowledge SET status = ? WHERE id = ?", (new_status, record_id))
+            cur.execute("UPDATE knowledge SET status = ?, reviewer_notes = ? WHERE id = ?", (new_status, notes, record_id))
+            conn.commit()
+            conn.close()
+            return True
+        except Exception:
+            return False
+
+    def resubmit_record(self, record_id, data):
+        try:
+            conn = self.get_connection()
+            cur = conn.cursor()
+            cur.execute("""
+                UPDATE knowledge 
+                SET title = ?, project = ?, category = ?, impact = ?, summary = ?, root_cause = ?, recommendation = ?, status = 'Pending Review'
+                WHERE id = ?
+            """, (
+                data['title'], data['project'], data['category'], data['impact'], 
+                data['summary'], data['root_cause'], data['recommendation'], record_id
+            ))
             conn.commit()
             conn.close()
             return True
@@ -168,20 +196,17 @@ def parse_document(uploaded_file) -> str:
 def extract_knowledge(text: str) -> dict:
     res = {"summary": "", "root_cause": "", "recommendation": ""}
     if not text: return res
-    
     sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if len(s) > 15]
-    
     def extract_by_keywords(kw_list):
         matched = [s for s in sentences if any(kw in s.lower() for kw in kw_list)]
         return " ".join(matched[:3])
-        
     res["summary"] = extract_by_keywords(KEYWORDS_SUMMARY) or (" ".join(sentences[:2]) if sentences else "")
     res["root_cause"] = extract_by_keywords(KEYWORDS_ROOT_CAUSE)
     res["recommendation"] = extract_by_keywords(KEYWORDS_RECOMMENDATION)
     return res
 
 # ==============================================================================
-# 5. UI COMPONENTS & CSS (SEMANTIC COLORS & SAFE HEADER)
+# 5. UI COMPONENTS & CSS
 # ==============================================================================
 def inject_enterprise_css():
     st.markdown("""
@@ -205,6 +230,7 @@ def inject_enterprise_css():
         
         --sem-yellow-bg: rgba(229, 185, 110, 0.18);
         --sem-yellow-text: #B38634;
+        --sem-yellow-btn: #E5B96E;
         
         --sem-green-bg: rgba(140, 200, 164, 0.2);
         --sem-green-text: #4A8C64;
@@ -214,16 +240,13 @@ def inject_enterprise_css():
         --sem-grey-text: #667A8A;
     }
 
-    /* SAFE GLOBAL TYPOGRAPHY (Menghindari div/span agar tidak merusak SVG) */
-    html, body, p, h1, h2, h3, h4, h5, h6, label, li {
+    html, body, p, h3, h4, label, span, div {
         font-family: 'Inter', -apple-system, sans-serif !important;
     }
     
     .stApp, [data-testid="stAppViewContainer"] { background-color: var(--bg) !important; }
-    
-    /* SAFE HEADER MANAGEMENT */
-    header { background-color: transparent !important; }
-    .stAppDeployButton { display: none !important; } /* Hanya matikan tombol Deploy, biarkan struktur lainnya aman */
+    [data-testid="stHeader"] { background-color: transparent !important; }
+    [data-testid="stActionElements"], [data-testid="stToolbar"], .stAppDeployButton { display: none !important; }
     footer { display: none !important; }
 
     .block-container {
@@ -232,7 +255,6 @@ def inject_enterprise_css():
         max-width: 1200px !important;
     }
 
-    /* TYPOGRAPHY */
     .hero-text {
         font-family: 'Caveat', cursive !important;
         font-size: 110px; 
@@ -259,7 +281,6 @@ def inject_enterprise_css():
         line-height: 1.5;
     }
 
-    /* BENTO BOX */
     .bento {
         background-color: var(--surface);
         border-radius: 32px;
@@ -287,23 +308,22 @@ def inject_enterprise_css():
         box-shadow: 0 35px 60px rgba(107, 163, 206, 0.08) !important;
     }
 
-    /* KPI */
     .kpi-big-val { font-size: 96px; font-weight: 800; letter-spacing: -0.05em; line-height: 1; color: var(--text-primary);}
-    .kpi-big-title { font-size: 20px; font-weight: 600; color: var(--accent-blue); margin-top: 12px; font-family: 'Inter', sans-serif;}
+    .kpi-big-title { font-size: 20px; font-weight: 600; color: var(--accent-blue); margin-top: 12px; }
     .kpi-small-val { font-size: 48px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; color: var(--text-primary);}
-    .kpi-small-title { font-size: 16px; font-weight: 600; color: var(--text-secondary); margin-top: 8px; font-family: 'Inter', sans-serif;}
+    .kpi-small-title { font-size: 16px; font-weight: 600; color: var(--text-secondary); margin-top: 8px; }
 
-    /* CARD DESIGN & BADGES */
-    .card-title { font-size: 28px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.2; margin-bottom: 8px; color: var(--text-primary); font-family: 'Inter', sans-serif;}
-    .card-meta { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 32px; font-family: 'Inter', sans-serif;}
-    .card-section { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-blue); margin-top: 24px; margin-bottom: 8px; border-bottom: 1px solid rgba(107,163,206,0.2); padding-bottom: 4px; font-family: 'Inter', sans-serif;}
-    .card-body { font-size: 17px; font-weight: 400; line-height: 1.6; color: var(--text-primary); font-family: 'Inter', sans-serif;}
+    .card-title { font-size: 28px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.2; margin-bottom: 8px; color: var(--text-primary);}
+    .card-meta { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 32px;}
+    .card-section { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-blue); margin-top: 24px; margin-bottom: 8px; border-bottom: 1px solid rgba(107,163,206,0.2); padding-bottom: 4px;}
+    .card-body { font-size: 17px; font-weight: 400; line-height: 1.6; color: var(--text-primary); }
     
     /* Semantic Badge Colors */
-    .badge { display: inline-block; padding: 6px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 700; margin-right: 8px; font-family: 'Inter', sans-serif;}
+    .badge { display: inline-block; padding: 6px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 700; margin-right: 8px;}
     
-    .badge-status-Pending { background-color: var(--sem-yellow-bg); color: var(--sem-yellow-text); }
+    .badge-status-Pending { background-color: var(--sem-grey-bg); color: var(--sem-grey-text); }
     .badge-status-Verified { background-color: var(--sem-green-bg); color: var(--sem-green-text); }
+    .badge-status-NeedsRevision { background-color: var(--sem-yellow-bg); color: var(--sem-yellow-text); }
     .badge-status-Rejected { background-color: var(--sem-red-bg); color: var(--sem-red-text); }
     
     .badge-impact-High { background-color: var(--sem-red-bg); color: var(--sem-red-text); }
@@ -312,7 +332,6 @@ def inject_enterprise_css():
     
     .badge-category { background-color: var(--sem-grey-bg); color: var(--sem-grey-text); border: 1px solid rgba(122, 141, 153, 0.2); }
     
-    /* FORMS & INPUTS */
     .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {
         background-color: var(--bg) !important;
         border: 1px solid var(--border) !important;
@@ -328,7 +347,6 @@ def inject_enterprise_css():
         box-shadow: 0 0 0 2px rgba(107,163,206,0.3) !important;
     }
 
-    /* DEFAULT BUTTONS */
     .stButton button, .stDownloadButton button {
         background-color: var(--accent-blue) !important;
         color: var(--surface) !important;
@@ -347,24 +365,16 @@ def inject_enterprise_css():
     }
     .stButton button p, .stDownloadButton button p { color: var(--surface) !important; margin:0;}
 
-    /* SEMANTIC BUTTONS (Menggunakan trik CSS :has() untuk menarget teks di dalam tombol) */
-    div[data-testid="stButton"] button:has(p:contains("Reject")) {
-        background-color: var(--sem-red-btn) !important;
-    }
-    div[data-testid="stButton"] button:has(p:contains("Reject")):hover {
-        background-color: #C26B6B !important;
-        box-shadow: 0 15px 30px rgba(217, 128, 128, 0.3) !important;
-    }
+    /* Semantic Buttons */
+    div[data-testid="stButton"] button:has(p:contains("Reject")) { background-color: var(--sem-red-btn) !important; }
+    div[data-testid="stButton"] button:has(p:contains("Reject")):hover { background-color: #C26B6B !important; box-shadow: 0 15px 30px rgba(217, 128, 128, 0.3) !important; }
     
-    div[data-testid="stButton"] button:has(p:contains("Verify")) {
-        background-color: var(--sem-green-btn) !important;
-    }
-    div[data-testid="stButton"] button:has(p:contains("Verify")):hover {
-        background-color: #71B38D !important;
-        box-shadow: 0 15px 30px rgba(140, 200, 164, 0.3) !important;
-    }
+    div[data-testid="stButton"] button:has(p:contains("Verify")) { background-color: var(--sem-green-btn) !important; }
+    div[data-testid="stButton"] button:has(p:contains("Verify")):hover { background-color: #71B38D !important; box-shadow: 0 15px 30px rgba(140, 200, 164, 0.3) !important; }
+    
+    div[data-testid="stButton"] button:has(p:contains("Revision")) { background-color: var(--sem-yellow-btn) !important; }
+    div[data-testid="stButton"] button:has(p:contains("Revision")):hover { background-color: #D4A373 !important; box-shadow: 0 15px 30px rgba(229, 185, 110, 0.3) !important; }
 
-    /* NOTIFICATIONS */
     .notification {
         background-color: var(--accent-blue);
         color: var(--surface);
@@ -377,7 +387,6 @@ def inject_enterprise_css():
         box-shadow: 0 20px 40px rgba(107,163,206,0.2);
     }
 
-    /* SIDEBAR */
     [data-testid="stSidebar"] {
         background-color: var(--surface) !important;
         border-right: 1px solid var(--border);
@@ -392,7 +401,7 @@ def inject_enterprise_css():
         transition: .2s;
     }
     div[role="radiogroup"] > label[data-checked="true"] {
-        background-color: rgba(107, 163, 206, 0.1) !important;
+        background-color: var(--accent-bg) !important;
         color: var(--accent-blue) !important;
     }
     div[role="radiogroup"] > label:hover {
@@ -448,13 +457,11 @@ def render_knowledge_card(row):
 def render_notification(message):
     st.markdown(f"<div class='notification'>{message}</div>", unsafe_allow_html=True)
 
-def render_empty_state():
-    st.markdown("""
+def render_empty_state(title="Knowledge Repository", subtitle="No entries available.<br>Create your first knowledge entry to start building organizational memory."):
+    st.markdown(f"""
     <div class="bento" style="text-align: center; padding: 80px 40px;">
-        <div class="section-title" style="margin-bottom: 16px;">Knowledge Repository</div>
-        <div class="card-body" style="color: var(--text-secondary);">
-            No entries available.<br>Create your first knowledge entry to start building organizational memory.
-        </div>
+        <div class="section-title" style="margin-bottom: 16px; font-family: 'Inter', sans-serif !important; font-size: 32px;">{title}</div>
+        <div class="card-body" style="color: var(--text-secondary);">{subtitle}</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -489,8 +496,7 @@ def view_dashboard(repo):
     with c1:
         with st.container(border=True):
             st.markdown("<div class='card-title' style='font-size: 20px;'>Status Distribution</div>", unsafe_allow_html=True)
-            
-            color_map = {'Verified': '#8CC8A4', 'Pending Review': '#E5B96E', 'Rejected': '#D98080'}
+            color_map = {'Verified': '#8CC8A4', 'Pending Review': '#A0AEB8', 'Needs Revision': '#E5B96E', 'Rejected': '#D98080'}
             fig1 = px.pie(df, names="status", hole=0.8, color="status", color_discrete_map=color_map)
             fig1.update_layout(showlegend=False, height=300, margin=dict(t=10, b=10, l=10, r=10))
             st.plotly_chart(fig1, use_container_width=True)
@@ -498,7 +504,6 @@ def view_dashboard(repo):
     with c2:
         with st.container(border=True):
             st.markdown("<div class='card-title' style='font-size: 20px;'>Impact Analysis</div>", unsafe_allow_html=True)
-            
             color_map_impact = {'High': '#D98080', 'Medium': '#E5B96E', 'Low': '#A0AEB8'}
             fig2 = px.histogram(df, x="impact", color="impact", color_discrete_map=color_map_impact)
             fig2.update_layout(showlegend=False, xaxis_title="", yaxis_title="", height=300, margin=dict(t=10, b=10, l=10, r=10))
@@ -509,7 +514,6 @@ def view_browse(repo):
     
     df = repo.fetch_all()
     search_query = st.text_input("Search", placeholder="Search title, project or keyword...", label_visibility="collapsed")
-    
     if search_query:
         df = df[df.astype(str).apply(lambda x: x.str.contains(search_query, case=False, na=False)).any(axis=1)]
 
@@ -530,9 +534,7 @@ def view_upload(repo):
     with st.container(border=True):
         st.markdown("<div class='card-title' style='font-size: 20px; margin-bottom: 16px;'>AI Document Parsing</div>", unsafe_allow_html=True)
         st.markdown("<div style='color: var(--text-secondary); margin-bottom: 16px; font-weight: 500;'>Upload PDF or Text document to automatically extract and populate the form below.</div>", unsafe_allow_html=True)
-        
         uploaded_file = st.file_uploader("Format: PDF, DOCX, TXT", type=["pdf", "txt", "docx"], label_visibility="collapsed")
-        
         if uploaded_file and st.button("Analyze Document"):
             with st.spinner("Extracting knowledge..."):
                 raw_text = parse_document(uploaded_file)
@@ -544,13 +546,11 @@ def view_upload(repo):
                     render_notification("Document analyzed. Form populated below.")
                 else:
                     st.error("Could not extract text from document.")
-                    
     st.write("")
     
     with st.container(border=True):
         with st.form("entry_form", border=False):
             title = st.text_input("Title", placeholder="Entry Title")
-            
             c1, c2 = st.columns(2)
             with c1:
                 project = st.text_input("Project", placeholder="Project Name")
@@ -579,6 +579,55 @@ def view_upload(repo):
                 else:
                     st.error("Title and Summary are required.")
 
+# ==============================================================================
+# MENU BARU: REVISION DESK (RUANG UPLOADER UNTUK REVISI)
+# ==============================================================================
+def view_revision(repo):
+    st.markdown("<div class='section-title'>Revision Desk</div>", unsafe_allow_html=True)
+    df = repo.fetch_all()
+    rev_df = df[df['status'] == 'Needs Revision']
+    
+    if rev_df.empty:
+        render_empty_state("Clean Workspace", "No documents require your revision. Great job!")
+        return
+
+    for _, row in rev_df.iterrows():
+        with st.container(border=True):
+            st.markdown(f"<div class='card-title' style='font-size: 24px;'>{row['title']}</div>", unsafe_allow_html=True)
+            
+            # Kotak Feedback PMO
+            st.markdown(f"""
+            <div style="background-color: var(--sem-yellow-bg); border-left: 4px solid var(--sem-yellow-text); padding: 16px 20px; border-radius: 12px; margin-bottom: 24px; margin-top: 12px;">
+                <div style="font-weight: 700; color: var(--sem-yellow-text); margin-bottom: 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em;">PMO Feedback</div>
+                <div style="color: var(--text-primary); font-size: 15px; line-height: 1.5;">{row['reviewer_notes']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            with st.form(f"form_rev_{row['id']}", border=False):
+                title = st.text_input("Title", value=row['title'], key=f"t_{row['id']}")
+                c1, c2 = st.columns(2)
+                with c1:
+                    project = st.text_input("Project", value=row['project'], key=f"p_{row['id']}")
+                    cat_idx = CATEGORY_OPTIONS.index(row['category']) if row['category'] in CATEGORY_OPTIONS else 0
+                    category = st.selectbox("Category", CATEGORY_OPTIONS, index=cat_idx, key=f"c_{row['id']}")
+                with c2:
+                    imp_idx = IMPACT_LEVELS.index(row['impact']) if row['impact'] in IMPACT_LEVELS else 0
+                    impact = st.selectbox("Impact", IMPACT_LEVELS, index=imp_idx, key=f"i_{row['id']}")
+                    
+                summary = st.text_area("Summary", value=row['summary'], height=100, key=f"s_{row['id']}")
+                root_cause = st.text_area("Root Cause", value=row['root_cause'], height=100, key=f"rc_{row['id']}")
+                recommendation = st.text_area("Recommendation", value=row['recommendation'], height=100, key=f"rec_{row['id']}")
+                
+                st.write("")
+                if st.form_submit_button("Resubmit for Review"):
+                    data = {
+                        'title': title, 'project': project, 'category': category,
+                        'impact': impact, 'summary': summary, 'root_cause': root_cause,
+                        'recommendation': recommendation
+                    }
+                    if repo.resubmit_record(row['id'], data):
+                        st.rerun()
+
 def view_approval(repo):
     st.markdown("<div class='section-title'>Knowledge Review</div>", unsafe_allow_html=True)
     
@@ -586,35 +635,30 @@ def view_approval(repo):
     pending_df = df[df['status'] == 'Pending Review']
     
     if pending_df.empty:
-        st.markdown("""
-        <div class="bento" style="text-align: center; padding: 60px;">
-            <div class="card-body" style="color: var(--text-secondary); font-weight: 600;">
-                No pending reviews. Workspace is clear.
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        render_empty_state("Inbox Zero", "No pending reviews. Workspace is clear.")
         return
 
     for _, row in pending_df.iterrows():
         render_knowledge_card(row)
         with st.container(border=True):
-            notes = st.text_area("Reviewer Note", placeholder="Optional feedback...", key=f"note_{row['id']}")
-            c1, c2 = st.columns(2)
+            notes = st.text_area("PMO Feedback (Required if returning for revision)", placeholder="Write your feedback to the uploader here...", key=f"note_{row['id']}")
+            c1, c2, c3 = st.columns(3)
             with c1:
-                if st.button("Reject", key=f"rej_{row['id']}"):
-                    if repo.update_status(row['id'], "Rejected"):
-                        render_notification("Review completed: Rejected.")
-                        st.rerun()
+                if st.button("Reject (Final)", key=f"rej_{row['id']}"):
+                    repo.update_status(row['id'], "Rejected", notes)
+                    st.rerun()
             with c2:
+                if st.button("Needs Revision", key=f"rev_{row['id']}"):
+                    repo.update_status(row['id'], "Needs Revision", notes)
+                    st.rerun()
+            with c3:
                 if st.button("Verify", key=f"ver_{row['id']}"):
-                    if repo.update_status(row['id'], "Verified"):
-                        render_notification("Review completed: Verified.")
-                        st.rerun()
+                    repo.update_status(row['id'], "Verified", notes)
+                    st.rerun()
         st.write("")
 
 def view_export(repo):
     st.markdown("<div class='section-title'>Data Export</div>", unsafe_allow_html=True)
-    
     df = repo.fetch_all()
     if df.empty:
         render_empty_state()
@@ -625,33 +669,27 @@ def view_export(repo):
         st.markdown("<div style='color: var(--text-secondary); margin-bottom: 32px; font-weight: 500;'>Download the entire repository data for offline analysis and reporting.</div>", unsafe_allow_html=True)
         
         c1, c2 = st.columns(2)
-        
         with c1:
             csv_bytes = df.to_csv(index=False).encode("utf-8-sig")
             st.download_button(
-                label="Download CSV",
-                data=csv_bytes,
+                label="Download CSV", data=csv_bytes,
                 file_name=f"PTBA_KM_{datetime.now().strftime('%Y%m%d')}.csv",
-                mime="text/csv",
-                use_container_width=True
+                mime="text/csv", use_container_width=True
             )
-            
         with c2:
             try:
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine="openpyxl") as writer:
                     df.to_excel(writer, index=False, sheet_name="Knowledge_Base")
                 excel_bytes = output.getvalue()
-                
                 st.download_button(
-                    label="Download Excel",
-                    data=excel_bytes,
+                    label="Download Excel", data=excel_bytes,
                     file_name=f"PTBA_KM_{datetime.now().strftime('%Y%m%d')}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     use_container_width=True
                 )
             except Exception:
-                st.markdown("<div style='color: var(--text-secondary); font-size: 14px; text-align: center; margin-top: 16px;'>Requires 'openpyxl' module for Excel format.</div>", unsafe_allow_html=True)
+                st.markdown("<div style='color: var(--text-secondary); font-size: 14px; text-align: center; margin-top: 16px;'>Requires 'openpyxl' module.</div>", unsafe_allow_html=True)
 
 # ==============================================================================
 # 6. MAIN ROUTING & SIDEBAR
@@ -668,11 +706,11 @@ def main():
         
         navigation = st.radio(
             "Nav",
-            ["Dashboard", "Browse", "New Entry", "Approval", "Export"],
+            ["Dashboard", "Browse", "New Entry", "Revision Desk", "Approval", "Export"],
             label_visibility="collapsed"
         )
         
-        st.markdown("<div style='margin-top: 60px; padding-left: 10px; font-size: 12px; font-weight: 600; color: var(--text-secondary);'>Repository<br>Version 1.0</div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top: 60px; padding-left: 10px; font-size: 12px; font-weight: 600; color: var(--text-secondary);'>Repository<br>Version 1.1</div>", unsafe_allow_html=True)
 
     if navigation == "Dashboard":
         view_dashboard(repo)
@@ -680,6 +718,8 @@ def main():
         view_browse(repo)
     elif navigation == "New Entry":
         view_upload(repo)
+    elif navigation == "Revision Desk":
+        view_revision(repo)
     elif navigation == "Approval":
         view_approval(repo)
     elif navigation == "Export":
