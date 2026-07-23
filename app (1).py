@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 Enterprise Knowledge Management
-Design System: Apple Business / Minimalist Monochromatic
-Architecture: Object-Oriented, Cached Repository, AI Auto-Fill Document Parsing, Data Export
+Design System: Clean Bento Box with Soft Blue & Green Palette
+Architecture: Object-Oriented, Cached Repository, AI Auto-Fill, Data Export
 """
 
 import streamlit as st
@@ -55,14 +55,16 @@ KEYWORDS_RECOMMENDATION = ["rekomendasi", "solusi", "usulan", "tindak lanjut", "
 def create_apple_theme():
     font_family = "'SF Pro Display', 'Inter', -apple-system, sans-serif"
     template = pio.templates["plotly_white"]
-    template.layout.font = dict(family=font_family, color="#111111", size=14)
+    template.layout.font = dict(family=font_family, color="#1E2A32", size=14)
     template.layout.paper_bgcolor = "rgba(0,0,0,0)"
     template.layout.plot_bgcolor = "rgba(0,0,0,0)"
-    template.layout.colorway = ["#111111", "#555555", "#888888", "#BDBDBD", "#E5E5E5"]
+    
+    # Palet Hijau & Biru Lembut untuk Grafik
+    template.layout.colorway = ["#6BA3CE", "#8CC8A4", "#9FBFE0", "#B2DAC1", "#4A7C9D", "#629E85"]
     
     template.layout.xaxis.showgrid = False
     template.layout.yaxis.showgrid = True
-    template.layout.yaxis.gridcolor = "rgba(0,0,0,0.05)"
+    template.layout.yaxis.gridcolor = "rgba(107, 163, 206, 0.1)" # Grid biru transparan
     
     pio.templates["apple_enterprise"] = template
     pio.templates.default = "apple_enterprise"
@@ -179,7 +181,7 @@ def extract_knowledge(text: str) -> dict:
     return res
 
 # ==============================================================================
-# 5. UI COMPONENTS & CSS (MACRO TYPOGRAPHY & BENTO)
+# 5. UI COMPONENTS & CSS
 # ==============================================================================
 def inject_enterprise_css():
     st.markdown("""
@@ -187,11 +189,16 @@ def inject_enterprise_css():
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
     :root {
-        --bg: #F5F5F7;
+        --bg: #F4F9F8; /* Latar belakang mint/icy grey sangat lembut */
         --surface: #FFFFFF;
-        --text-primary: #111111;
-        --text-secondary: #86868B;
-        --border: rgba(0,0,0,0.04);
+        --text-primary: #1E2A32; /* Deep slate / navy gelap */
+        --text-secondary: #7A8D99; /* Grey blue lembut */
+        --border: rgba(107, 163, 206, 0.15); /* Border kebiruan transparan */
+        
+        --accent-blue: #6BA3CE; /* Biru lembut */
+        --accent-blue-hover: #5A8DB7;
+        --accent-green: #8CC8A4; /* Hijau lembut */
+        --accent-bg: rgba(107, 163, 206, 0.1);
     }
 
     /* 1. Base App Background */
@@ -204,14 +211,12 @@ def inject_enterprise_css():
         font-family: 'SF Pro Display', 'Inter', -apple-system, sans-serif !important;
     }
 
-    /* 3. Safe Header Management (Mencegah blokir klik) */
-    header { background-color: transparent !important; }
-    [data-testid="stActionElements"], [data-testid="stToolbar"], .stAppDeployButton { 
-        display: none !important; 
-    }
+    /* 3. Header Management */
+    [data-testid="stHeader"] { background-color: transparent !important; }
+    [data-testid="stActionElements"], [data-testid="stToolbar"], .stAppDeployButton { display: none !important; }
     footer { display: none !important; }
 
-    /* 4. Ruang atas (Padding) */
+    /* 4. Padding atas */
     .block-container {
         padding-top: 5rem !important; 
         padding-bottom: 6rem !important;
@@ -251,13 +256,13 @@ def inject_enterprise_css():
         padding: 40px;
         margin-bottom: 24px;
         border: 1px solid var(--border);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+        box-shadow: 0 10px 30px rgba(107, 163, 206, 0.04);
         transition: transform .35s, box-shadow .35s;
         height: 100%;
     }
     .bento:hover {
         transform: translateY(-6px);
-        box-shadow: 0 45px 70px rgba(0,0,0,0.08);
+        box-shadow: 0 35px 60px rgba(107, 163, 206, 0.08);
     }
 
     [data-testid="stVerticalBlockBorderWrapper"] {
@@ -265,17 +270,17 @@ def inject_enterprise_css():
         border-radius: 32px !important;
         padding: 32px !important;
         border: 1px solid var(--border) !important;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.02) !important;
+        box-shadow: 0 10px 30px rgba(107, 163, 206, 0.04) !important;
         transition: transform .35s, box-shadow .35s !important;
     }
     [data-testid="stVerticalBlockBorderWrapper"]:hover {
         transform: translateY(-6px) !important;
-        box-shadow: 0 45px 70px rgba(0,0,0,0.08) !important;
+        box-shadow: 0 35px 60px rgba(107, 163, 206, 0.08) !important;
     }
 
     /* 7. KPI Metrics */
     .kpi-big-val { font-size: 96px; font-weight: 800; letter-spacing: -0.05em; line-height: 1; color: var(--text-primary);}
-    .kpi-big-title { font-size: 20px; font-weight: 600; color: var(--text-secondary); margin-top: 12px; }
+    .kpi-big-title { font-size: 20px; font-weight: 600; color: var(--accent-blue); margin-top: 12px; }
     
     .kpi-small-val { font-size: 48px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; color: var(--text-primary);}
     .kpi-small-title { font-size: 16px; font-weight: 600; color: var(--text-secondary); margin-top: 8px; }
@@ -283,9 +288,9 @@ def inject_enterprise_css():
     /* 8. Card Design */
     .card-title { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.2; margin-bottom: 8px; color: var(--text-primary);}
     .card-meta { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 32px;}
-    .card-section { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-top: 24px; margin-bottom: 8px; border-bottom: 1px solid #E5E5E5; padding-bottom: 4px;}
+    .card-section { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-blue); margin-top: 24px; margin-bottom: 8px; border-bottom: 1px solid rgba(107,163,206,0.2); padding-bottom: 4px;}
     .card-body { font-size: 17px; font-weight: 400; line-height: 1.6; color: var(--text-primary); }
-    .badge { display: inline-block; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; background-color: var(--bg); color: var(--text-secondary); margin-right: 8px;}
+    .badge { display: inline-block; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; background-color: var(--accent-bg); color: var(--accent-blue); margin-right: 8px;}
     
     /* 9. Forms & Inputs */
     .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {
@@ -299,31 +304,32 @@ def inject_enterprise_css():
         transition: .2s ease;
     }
     .stTextInput input:focus, .stTextArea textarea:focus, .stSelectbox div[data-baseweb="select"] > div:focus-within {
-        border-color: var(--text-primary) !important;
-        box-shadow: 0 0 0 2px var(--text-primary) !important;
+        border-color: var(--accent-blue) !important;
+        box-shadow: 0 0 0 2px rgba(107,163,206,0.3) !important;
     }
 
-    /* 10. Normal Buttons & Download Buttons */
+    /* 10. Buttons & Downloads */
     .stButton button, .stDownloadButton button {
-        background-color: var(--text-primary) !important;
+        background-color: var(--accent-blue) !important;
         color: var(--surface) !important;
         border-radius: 20px !important;
         padding: 16px 32px !important;
         font-weight: 600 !important;
         font-size: 17px !important;
         border: none !important;
-        transition: transform .3s, box-shadow .3s !important;
+        transition: transform .3s, box-shadow .3s, background-color .3s !important;
         width: 100%;
     }
     .stButton button:hover, .stDownloadButton button:hover {
+        background-color: var(--accent-green) !important; /* Hijau saat di-hover */
         transform: translateY(-2px);
-        box-shadow: 0 15px 30px rgba(0,0,0,0.15) !important;
+        box-shadow: 0 15px 30px rgba(140, 200, 164, 0.25) !important;
     }
     .stButton button p, .stDownloadButton button p { color: var(--surface) !important; margin:0;}
 
     /* 11. Notifications */
     .notification {
-        background-color: var(--text-primary);
+        background-color: var(--accent-blue);
         color: var(--surface);
         padding: 20px 32px;
         border-radius: 16px;
@@ -331,10 +337,10 @@ def inject_enterprise_css():
         font-size: 17px;
         text-align: center;
         margin-bottom: 24px;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        box-shadow: 0 20px 40px rgba(107,163,206,0.2);
     }
 
-    /* 12. Sidebar Menu Design */
+    /* 12. Sidebar Menu */
     [data-testid="stSidebar"] {
         background-color: var(--surface) !important;
         border-right: 1px solid var(--border);
@@ -349,8 +355,8 @@ def inject_enterprise_css():
         transition: .2s;
     }
     div[role="radiogroup"] > label[data-checked="true"] {
-        background-color: var(--bg) !important;
-        color: var(--text-primary) !important;
+        background-color: var(--accent-bg) !important;
+        color: var(--accent-blue) !important;
     }
     div[role="radiogroup"] > label:hover {
         background-color: var(--bg) !important;
@@ -358,7 +364,7 @@ def inject_enterprise_css():
     
     [data-testid="stFileUploadDropzone"] {
         border-radius: 18px !important;
-        border: 1px dashed var(--text-secondary) !important;
+        border: 1px dashed var(--accent-blue) !important;
         background-color: var(--bg) !important;
     }
     </style>
@@ -577,7 +583,6 @@ def view_export(repo):
         c1, c2 = st.columns(2)
         
         with c1:
-            # CSV Download
             csv_bytes = df.to_csv(index=False).encode("utf-8-sig")
             st.download_button(
                 label="Download CSV",
@@ -588,7 +593,6 @@ def view_export(repo):
             )
             
         with c2:
-            # Excel Download
             try:
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine="openpyxl") as writer:
