@@ -60,7 +60,6 @@ def create_apple_theme():
     template.layout.paper_bgcolor = "rgba(0,0,0,0)"
     template.layout.plot_bgcolor = "rgba(0,0,0,0)"
     
-    # Palet Hijau & Biru Lembut
     template.layout.colorway = ["#6BA3CE", "#8CC8A4", "#9FBFE0", "#B2DAC1", "#4A7C9D", "#629E85"]
     
     template.layout.xaxis.showgrid = False
@@ -182,7 +181,7 @@ def extract_knowledge(text: str) -> dict:
     return res
 
 # ==============================================================================
-# 5. UI COMPONENTS & CSS (SEMANTIC COLORS)
+# 5. UI COMPONENTS & CSS (SEMANTIC COLORS & SAFE HEADER)
 # ==============================================================================
 def inject_enterprise_css():
     st.markdown("""
@@ -200,7 +199,6 @@ def inject_enterprise_css():
         --accent-blue-hover: #5A8DB7;
         --accent-green: #8CC8A4;
         
-        /* Semantic Colors (Soft & Premium) */
         --sem-red-bg: rgba(227, 138, 138, 0.15);
         --sem-red-text: #B85C5C;
         --sem-red-btn: #D98080;
@@ -216,13 +214,16 @@ def inject_enterprise_css():
         --sem-grey-text: #667A8A;
     }
 
-    html, body, p, h3, h4, label, span, div {
+    /* SAFE GLOBAL TYPOGRAPHY (Menghindari div/span agar tidak merusak SVG) */
+    html, body, p, h1, h2, h3, h4, h5, h6, label, li {
         font-family: 'Inter', -apple-system, sans-serif !important;
     }
     
     .stApp, [data-testid="stAppViewContainer"] { background-color: var(--bg) !important; }
-    [data-testid="stHeader"] { background-color: transparent !important; }
-    [data-testid="stActionElements"], [data-testid="stToolbar"], .stAppDeployButton { display: none !important; }
+    
+    /* SAFE HEADER MANAGEMENT */
+    header { background-color: transparent !important; }
+    .stAppDeployButton { display: none !important; } /* Hanya matikan tombol Deploy, biarkan struktur lainnya aman */
     footer { display: none !important; }
 
     .block-container {
@@ -288,18 +289,18 @@ def inject_enterprise_css():
 
     /* KPI */
     .kpi-big-val { font-size: 96px; font-weight: 800; letter-spacing: -0.05em; line-height: 1; color: var(--text-primary);}
-    .kpi-big-title { font-size: 20px; font-weight: 600; color: var(--accent-blue); margin-top: 12px; }
+    .kpi-big-title { font-size: 20px; font-weight: 600; color: var(--accent-blue); margin-top: 12px; font-family: 'Inter', sans-serif;}
     .kpi-small-val { font-size: 48px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; color: var(--text-primary);}
-    .kpi-small-title { font-size: 16px; font-weight: 600; color: var(--text-secondary); margin-top: 8px; }
+    .kpi-small-title { font-size: 16px; font-weight: 600; color: var(--text-secondary); margin-top: 8px; font-family: 'Inter', sans-serif;}
 
     /* CARD DESIGN & BADGES */
-    .card-title { font-size: 28px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.2; margin-bottom: 8px; color: var(--text-primary);}
-    .card-meta { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 32px;}
-    .card-section { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-blue); margin-top: 24px; margin-bottom: 8px; border-bottom: 1px solid rgba(107,163,206,0.2); padding-bottom: 4px;}
-    .card-body { font-size: 17px; font-weight: 400; line-height: 1.6; color: var(--text-primary); }
+    .card-title { font-size: 28px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.2; margin-bottom: 8px; color: var(--text-primary); font-family: 'Inter', sans-serif;}
+    .card-meta { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 32px; font-family: 'Inter', sans-serif;}
+    .card-section { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-blue); margin-top: 24px; margin-bottom: 8px; border-bottom: 1px solid rgba(107,163,206,0.2); padding-bottom: 4px; font-family: 'Inter', sans-serif;}
+    .card-body { font-size: 17px; font-weight: 400; line-height: 1.6; color: var(--text-primary); font-family: 'Inter', sans-serif;}
     
     /* Semantic Badge Colors */
-    .badge { display: inline-block; padding: 6px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 700; margin-right: 8px;}
+    .badge { display: inline-block; padding: 6px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 700; margin-right: 8px; font-family: 'Inter', sans-serif;}
     
     .badge-status-Pending { background-color: var(--sem-yellow-bg); color: var(--sem-yellow-text); }
     .badge-status-Verified { background-color: var(--sem-green-bg); color: var(--sem-green-text); }
@@ -423,7 +424,6 @@ def render_small_kpi(title, value):
     """, unsafe_allow_html=True)
 
 def render_knowledge_card(row):
-    # Logika untuk menyematkan kelas CSS semantik
     status_str = str(row['status']).replace(" Pending Review", "Pending").replace(" ", "")
     impact_str = str(row['impact']).replace(" ", "")
     
@@ -463,7 +463,7 @@ def render_empty_state():
 # ==============================================================================
 def view_dashboard(repo):
     st.markdown("""
-    <div class="hero-text">Enterprise<br>Knowledge<br>Management</div>
+    <div class="hero-text">PT Bukit Asam<br>Knowledge<br>Management</div>
     <div class="hero-sub">Capture organizational knowledge and transform operational experience into strategic assets.</div>
     """, unsafe_allow_html=True)
 
@@ -490,7 +490,6 @@ def view_dashboard(repo):
         with st.container(border=True):
             st.markdown("<div class='card-title' style='font-size: 20px;'>Status Distribution</div>", unsafe_allow_html=True)
             
-            # Warnai chart pie sesuai semantik
             color_map = {'Verified': '#8CC8A4', 'Pending Review': '#E5B96E', 'Rejected': '#D98080'}
             fig1 = px.pie(df, names="status", hole=0.8, color="status", color_discrete_map=color_map)
             fig1.update_layout(showlegend=False, height=300, margin=dict(t=10, b=10, l=10, r=10))
@@ -632,7 +631,7 @@ def view_export(repo):
             st.download_button(
                 label="Download CSV",
                 data=csv_bytes,
-                file_name=f"Knowledge_Base_{datetime.now().strftime('%Y%m%d')}.csv",
+                file_name=f"PTBA_KM_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
                 use_container_width=True
             )
@@ -647,7 +646,7 @@ def view_export(repo):
                 st.download_button(
                     label="Download Excel",
                     data=excel_bytes,
-                    file_name=f"Knowledge_Base_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                    file_name=f"PTBA_KM_{datetime.now().strftime('%Y%m%d')}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     use_container_width=True
                 )
@@ -658,14 +657,14 @@ def view_export(repo):
 # 6. MAIN ROUTING & SIDEBAR
 # ==============================================================================
 def main():
-    st.set_page_config(page_title="Enterprise KM", layout="wide", initial_sidebar_state="expanded")
+    st.set_page_config(page_title="PTBA KM System", layout="wide", initial_sidebar_state="expanded")
     create_apple_theme()
     inject_enterprise_css()
     
     repo = get_repository()
 
     with st.sidebar:
-        st.markdown("<div style='font-size: 14px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 24px; padding-left: 10px;'>Enterprise KM</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size: 14px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 24px; padding-left: 10px;'>PT Bukit Asam KM</div>", unsafe_allow_html=True)
         
         navigation = st.radio(
             "Nav",
