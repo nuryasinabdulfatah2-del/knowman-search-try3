@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Enterprise Knowledge Management
-Design System: Clean Bento Box with Soft Blue & Green Palette
+Design System: Clean Bento Box + Semantic Soft Colors
 Typography: Caveat (Handwritten Headers) + Inter (Clean Body)
 Architecture: Object-Oriented, Cached Repository, AI Auto-Fill, Data Export
 """
@@ -182,12 +182,11 @@ def extract_knowledge(text: str) -> dict:
     return res
 
 # ==============================================================================
-# 5. UI COMPONENTS & CSS
+# 5. UI COMPONENTS & CSS (SEMANTIC COLORS)
 # ==============================================================================
 def inject_enterprise_css():
     st.markdown("""
     <style>
-    /* Mengimpor Font Tulisan Tangan (Caveat) dan Sans-Serif Bersih (Inter) */
     @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Inter:wght@400;500;600;700;800;900&display=swap');
 
     :root {
@@ -200,18 +199,28 @@ def inject_enterprise_css():
         --accent-blue: #6BA3CE;
         --accent-blue-hover: #5A8DB7;
         --accent-green: #8CC8A4;
-        --accent-bg: rgba(107, 163, 206, 0.1);
+        
+        /* Semantic Colors (Soft & Premium) */
+        --sem-red-bg: rgba(227, 138, 138, 0.15);
+        --sem-red-text: #B85C5C;
+        --sem-red-btn: #D98080;
+        
+        --sem-yellow-bg: rgba(229, 185, 110, 0.18);
+        --sem-yellow-text: #B38634;
+        
+        --sem-green-bg: rgba(140, 200, 164, 0.2);
+        --sem-green-text: #4A8C64;
+        --sem-green-btn: #8CC8A4;
+        
+        --sem-grey-bg: rgba(122, 141, 153, 0.12);
+        --sem-grey-text: #667A8A;
     }
 
-    /* Base Font: Inter (Untuk keterbacaan data yang tinggi) */
     html, body, p, h3, h4, label, span, div {
         font-family: 'Inter', -apple-system, sans-serif !important;
     }
     
-    .stApp, [data-testid="stAppViewContainer"] {
-        background-color: var(--bg) !important;
-    }
-
+    .stApp, [data-testid="stAppViewContainer"] { background-color: var(--bg) !important; }
     [data-testid="stHeader"] { background-color: transparent !important; }
     [data-testid="stActionElements"], [data-testid="stToolbar"], .stAppDeployButton { display: none !important; }
     footer { display: none !important; }
@@ -222,12 +231,10 @@ def inject_enterprise_css():
         max-width: 1200px !important;
     }
 
-    /* =========================================
-       TYPOGRAPHY (TULISAN TANGAN UNTUK JUDUL)
-       ========================================= */
+    /* TYPOGRAPHY */
     .hero-text {
         font-family: 'Caveat', cursive !important;
-        font-size: 110px; /* Diperbesar sedikit karena font latin cenderung lebih kecil visualnya */
+        font-size: 110px; 
         font-weight: 700;
         line-height: 0.9;
         color: var(--text-primary);
@@ -241,8 +248,6 @@ def inject_enterprise_css():
         margin-bottom: 32px;
         color: var(--text-primary);
     }
-    /* ========================================= */
-
     .hero-sub {
         font-size: 20px;
         font-weight: 500;
@@ -253,7 +258,7 @@ def inject_enterprise_css():
         line-height: 1.5;
     }
 
-    /* Bento Box Engine */
+    /* BENTO BOX */
     .bento {
         background-color: var(--surface);
         border-radius: 32px;
@@ -268,7 +273,6 @@ def inject_enterprise_css():
         transform: translateY(-6px);
         box-shadow: 0 35px 60px rgba(107, 163, 206, 0.08);
     }
-
     [data-testid="stVerticalBlockBorderWrapper"] {
         background-color: var(--surface) !important;
         border-radius: 32px !important;
@@ -282,21 +286,32 @@ def inject_enterprise_css():
         box-shadow: 0 35px 60px rgba(107, 163, 206, 0.08) !important;
     }
 
-    /* KPI Metrics (Tetap menggunakan Inter agar angka presisi) */
+    /* KPI */
     .kpi-big-val { font-size: 96px; font-weight: 800; letter-spacing: -0.05em; line-height: 1; color: var(--text-primary);}
     .kpi-big-title { font-size: 20px; font-weight: 600; color: var(--accent-blue); margin-top: 12px; }
-    
     .kpi-small-val { font-size: 48px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; color: var(--text-primary);}
     .kpi-small-title { font-size: 16px; font-weight: 600; color: var(--text-secondary); margin-top: 8px; }
 
-    /* Card Design */
+    /* CARD DESIGN & BADGES */
     .card-title { font-size: 28px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.2; margin-bottom: 8px; color: var(--text-primary);}
     .card-meta { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 32px;}
     .card-section { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-blue); margin-top: 24px; margin-bottom: 8px; border-bottom: 1px solid rgba(107,163,206,0.2); padding-bottom: 4px;}
     .card-body { font-size: 17px; font-weight: 400; line-height: 1.6; color: var(--text-primary); }
-    .badge { display: inline-block; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; background-color: var(--accent-bg); color: var(--accent-blue); margin-right: 8px;}
     
-    /* Forms & Inputs */
+    /* Semantic Badge Colors */
+    .badge { display: inline-block; padding: 6px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 700; margin-right: 8px;}
+    
+    .badge-status-Pending { background-color: var(--sem-yellow-bg); color: var(--sem-yellow-text); }
+    .badge-status-Verified { background-color: var(--sem-green-bg); color: var(--sem-green-text); }
+    .badge-status-Rejected { background-color: var(--sem-red-bg); color: var(--sem-red-text); }
+    
+    .badge-impact-High { background-color: var(--sem-red-bg); color: var(--sem-red-text); }
+    .badge-impact-Medium { background-color: var(--sem-yellow-bg); color: var(--sem-yellow-text); }
+    .badge-impact-Low { background-color: var(--sem-grey-bg); color: var(--sem-grey-text); }
+    
+    .badge-category { background-color: var(--sem-grey-bg); color: var(--sem-grey-text); border: 1px solid rgba(122, 141, 153, 0.2); }
+    
+    /* FORMS & INPUTS */
     .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {
         background-color: var(--bg) !important;
         border: 1px solid var(--border) !important;
@@ -312,7 +327,7 @@ def inject_enterprise_css():
         box-shadow: 0 0 0 2px rgba(107,163,206,0.3) !important;
     }
 
-    /* Buttons */
+    /* DEFAULT BUTTONS */
     .stButton button, .stDownloadButton button {
         background-color: var(--accent-blue) !important;
         color: var(--surface) !important;
@@ -325,13 +340,30 @@ def inject_enterprise_css():
         width: 100%;
     }
     .stButton button:hover, .stDownloadButton button:hover {
-        background-color: var(--accent-green) !important;
+        background-color: var(--accent-blue-hover) !important;
         transform: translateY(-2px);
-        box-shadow: 0 15px 30px rgba(140, 200, 164, 0.25) !important;
+        box-shadow: 0 15px 30px rgba(107, 163, 206, 0.25) !important;
     }
     .stButton button p, .stDownloadButton button p { color: var(--surface) !important; margin:0;}
 
-    /* Notifications */
+    /* SEMANTIC BUTTONS (Menggunakan trik CSS :has() untuk menarget teks di dalam tombol) */
+    div[data-testid="stButton"] button:has(p:contains("Reject")) {
+        background-color: var(--sem-red-btn) !important;
+    }
+    div[data-testid="stButton"] button:has(p:contains("Reject")):hover {
+        background-color: #C26B6B !important;
+        box-shadow: 0 15px 30px rgba(217, 128, 128, 0.3) !important;
+    }
+    
+    div[data-testid="stButton"] button:has(p:contains("Verify")) {
+        background-color: var(--sem-green-btn) !important;
+    }
+    div[data-testid="stButton"] button:has(p:contains("Verify")):hover {
+        background-color: #71B38D !important;
+        box-shadow: 0 15px 30px rgba(140, 200, 164, 0.3) !important;
+    }
+
+    /* NOTIFICATIONS */
     .notification {
         background-color: var(--accent-blue);
         color: var(--surface);
@@ -344,7 +376,7 @@ def inject_enterprise_css():
         box-shadow: 0 20px 40px rgba(107,163,206,0.2);
     }
 
-    /* Sidebar Menu */
+    /* SIDEBAR */
     [data-testid="stSidebar"] {
         background-color: var(--surface) !important;
         border-right: 1px solid var(--border);
@@ -359,7 +391,7 @@ def inject_enterprise_css():
         transition: .2s;
     }
     div[role="radiogroup"] > label[data-checked="true"] {
-        background-color: var(--accent-bg) !important;
+        background-color: rgba(107, 163, 206, 0.1) !important;
         color: var(--accent-blue) !important;
     }
     div[role="radiogroup"] > label:hover {
@@ -391,14 +423,18 @@ def render_small_kpi(title, value):
     """, unsafe_allow_html=True)
 
 def render_knowledge_card(row):
+    # Logika untuk menyematkan kelas CSS semantik
+    status_str = str(row['status']).replace(" Pending Review", "Pending").replace(" ", "")
+    impact_str = str(row['impact']).replace(" ", "")
+    
     st.markdown(f"""
 <div class="bento">
     <div class="card-title">{row['title']}</div>
     <div class="card-meta">{row['project']} &nbsp;|&nbsp; {row['upload_date']}</div>
     <div style="margin-bottom: 32px;">
-        <span class="badge">{row['status']}</span>
-        <span class="badge">{row['impact']} Impact</span>
-        <span class="badge">{row['category']}</span>
+        <span class="badge badge-status-{status_str}">{row['status']}</span>
+        <span class="badge badge-impact-{impact_str}">{row['impact']} Impact</span>
+        <span class="badge badge-category">{row['category']}</span>
     </div>
     <div class="card-section">Summary</div>
     <div class="card-body">{row['summary']}</div>
@@ -453,15 +489,20 @@ def view_dashboard(repo):
     with c1:
         with st.container(border=True):
             st.markdown("<div class='card-title' style='font-size: 20px;'>Status Distribution</div>", unsafe_allow_html=True)
-            fig1 = px.pie(df, names="status", hole=0.8)
+            
+            # Warnai chart pie sesuai semantik
+            color_map = {'Verified': '#8CC8A4', 'Pending Review': '#E5B96E', 'Rejected': '#D98080'}
+            fig1 = px.pie(df, names="status", hole=0.8, color="status", color_discrete_map=color_map)
             fig1.update_layout(showlegend=False, height=300, margin=dict(t=10, b=10, l=10, r=10))
             st.plotly_chart(fig1, use_container_width=True)
             
     with c2:
         with st.container(border=True):
             st.markdown("<div class='card-title' style='font-size: 20px;'>Impact Analysis</div>", unsafe_allow_html=True)
-            fig2 = px.histogram(df, x="impact")
-            fig2.update_layout(xaxis_title="", yaxis_title="", height=300, margin=dict(t=10, b=10, l=10, r=10))
+            
+            color_map_impact = {'High': '#D98080', 'Medium': '#E5B96E', 'Low': '#A0AEB8'}
+            fig2 = px.histogram(df, x="impact", color="impact", color_discrete_map=color_map_impact)
+            fig2.update_layout(showlegend=False, xaxis_title="", yaxis_title="", height=300, margin=dict(t=10, b=10, l=10, r=10))
             st.plotly_chart(fig2, use_container_width=True)
 
 def view_browse(repo):
