@@ -166,7 +166,7 @@ class KnowledgeRepository:
             return False
 
 @st.cache_resource
-def get_repository():
+def get_repository_2():
     return KnowledgeRepository(DB_PATH)
 
 # ==============================================================================
@@ -716,7 +716,7 @@ def main():
     create_apple_theme()
     inject_enterprise_css()
     
-    repo = get_repository()
+    repo = get_repository_2()
 
     with st.sidebar:
         st.markdown("<div style='font-size: 14px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 24px; padding-left: 10px; font-family: \"Inter\", sans-serif;'>PT Bukit Asam KM</div>", unsafe_allow_html=True)
