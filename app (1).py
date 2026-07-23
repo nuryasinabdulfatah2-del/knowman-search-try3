@@ -194,32 +194,21 @@ def inject_enterprise_css():
         --border: rgba(0,0,0,0.04);
     }
 
-    /* 1. Base App Background */
-    .stApp, [data-testid="stAppViewContainer"] {
+    .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
         background-color: var(--bg) !important;
     }
+    h1, h2, h3, h4, p, span, label, div {
+        font-family: 'SF Pro Display', 'Inter', -apple-system, sans-serif;
+    }
     
-    /* 2. Safe Global Typography */
-    html, body, p, h1, h2, h3, h4, label {
-        font-family: 'SF Pro Display', 'Inter', -apple-system, sans-serif !important;
-    }
-
-    /* 3. Safe Header Management (Mencegah blokir klik) */
-    header { background-color: transparent !important; }
-    /* Hanya sembunyikan elemen kanan (Deploy, 3-dots, dsb) tanpa merusak sidebar */
-    [data-testid="stActionElements"], [data-testid="stToolbar"], .stAppDeployButton { 
-        display: none !important; 
-    }
-    footer { display: none !important; }
-
-    /* 4. Ruang atas (Padding) agar judul tidak bertabrakan dengan tombol Sidebar */
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
     .block-container {
-        padding-top: 5rem !important; 
+        padding-top: 1rem !important;
         padding-bottom: 6rem !important;
         max-width: 1200px !important;
     }
 
-    /* 5. Typography Custom Classes */
     .hero-text {
         font-size: 88px;
         font-weight: 900;
@@ -245,7 +234,6 @@ def inject_enterprise_css():
         color: var(--text-primary);
     }
 
-    /* 6. Bento Box Engine */
     .bento {
         background-color: var(--surface);
         border-radius: 32px;
@@ -274,21 +262,19 @@ def inject_enterprise_css():
         box-shadow: 0 45px 70px rgba(0,0,0,0.08) !important;
     }
 
-    /* 7. KPI Metrics */
     .kpi-big-val { font-size: 96px; font-weight: 800; letter-spacing: -0.05em; line-height: 1; color: var(--text-primary);}
     .kpi-big-title { font-size: 20px; font-weight: 600; color: var(--text-secondary); margin-top: 12px; }
     
     .kpi-small-val { font-size: 48px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; color: var(--text-primary);}
     .kpi-small-title { font-size: 16px; font-weight: 600; color: var(--text-secondary); margin-top: 8px; }
 
-    /* 8. Card Design */
     .card-title { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.2; margin-bottom: 8px; color: var(--text-primary);}
     .card-meta { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 32px;}
     .card-section { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); margin-top: 24px; margin-bottom: 8px; border-bottom: 1px solid #E5E5E5; padding-bottom: 4px;}
     .card-body { font-size: 17px; font-weight: 400; line-height: 1.6; color: var(--text-primary); }
+
     .badge { display: inline-block; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; background-color: var(--bg); color: var(--text-secondary); margin-right: 8px;}
     
-    /* 9. Forms & Inputs */
     .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {
         background-color: var(--bg) !important;
         border: 1px solid var(--border) !important;
@@ -321,7 +307,7 @@ def inject_enterprise_css():
     }
     .stButton button p { color: var(--surface) !important; margin:0;}
 
-    /* 10. Notifications */
+    /* Notification Component */
     .notification {
         background-color: var(--text-primary);
         color: var(--surface);
@@ -334,7 +320,6 @@ def inject_enterprise_css():
         box-shadow: 0 20px 40px rgba(0,0,0,0.1);
     }
 
-    /* 11. Sidebar Menu Design */
     [data-testid="stSidebar"] {
         background-color: var(--surface) !important;
         border-right: 1px solid var(--border);
@@ -356,6 +341,7 @@ def inject_enterprise_css():
         background-color: var(--bg) !important;
     }
     
+    /* Modifikasi Uploader bawaan Streamlit agar bersih */
     [data-testid="stFileUploadDropzone"] {
         border-radius: 18px !important;
         border: 1px dashed var(--text-secondary) !important;
@@ -473,10 +459,12 @@ def view_browse(repo):
 def view_upload(repo):
     st.markdown("<div class='section-title'>New Knowledge Entry</div>", unsafe_allow_html=True)
     
+    # Inisialisasi state untuk menampung hasil ekstrak AI
     if 'ai_summary' not in st.session_state: st.session_state.ai_summary = ""
     if 'ai_root' not in st.session_state: st.session_state.ai_root = ""
     if 'ai_rec' not in st.session_state: st.session_state.ai_rec = ""
     
+    # Bagian 1: Uploader Dokumen AI
     with st.container(border=True):
         st.markdown("<div class='card-title' style='font-size: 20px; margin-bottom: 16px;'>AI Document Parsing</div>", unsafe_allow_html=True)
         st.markdown("<div style='color: var(--text-secondary); margin-bottom: 16px; font-weight: 500;'>Upload PDF or Text document to automatically extract and populate the form below.</div>", unsafe_allow_html=True)
@@ -497,6 +485,7 @@ def view_upload(repo):
                     
     st.write("")
     
+    # Bagian 2: Form Input
     with st.container(border=True):
         with st.form("entry_form", border=False):
             title = st.text_input("Title", placeholder="Entry Title")
@@ -522,6 +511,7 @@ def view_upload(repo):
                         "recommendation": recommendation, "uploader": uploader
                     }
                     if repo.insert(data):
+                        # Bersihkan state setelah disubmit
                         st.session_state.ai_summary = ""
                         st.session_state.ai_root = ""
                         st.session_state.ai_rec = ""
