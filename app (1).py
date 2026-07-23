@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Enterprise Knowledge Management
+PT Bukit Asam Knowledge Management System
 Design System: Clean Bento Box + Semantic Soft Colors
 Typography: Caveat (Handwritten Headers) + Inter (Clean Body)
 Architecture: Object-Oriented, Cached Repository, AI Auto-Fill, Data Export
