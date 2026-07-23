@@ -2,7 +2,7 @@
 """
 Enterprise Knowledge Management
 Design System: Apple Business / Minimalist Monochromatic
-Architecture: Object-Oriented, Cached Repository, AI Auto-Fill Document Parsing
+Architecture: Object-Oriented, Cached Repository, AI Auto-Fill Document Parsing, Data Export
 """
 
 import streamlit as st
@@ -204,17 +204,14 @@ def inject_enterprise_css():
         font-family: 'SF Pro Display', 'Inter', -apple-system, sans-serif !important;
     }
 
-    /* 3. Header Management (Aman, tidak memblokir klik!) */
-    [data-testid="stHeader"] { 
-        background-color: transparent !important; 
-    }
-    /* HANYA hilangkan tombol Deploy, sisakan titik tiga di pojok kanan agar berfungsi */
-    .stAppDeployButton { 
+    /* 3. Safe Header Management (Mencegah blokir klik) */
+    header { background-color: transparent !important; }
+    [data-testid="stActionElements"], [data-testid="stToolbar"], .stAppDeployButton { 
         display: none !important; 
     }
     footer { display: none !important; }
 
-    /* 4. Ruang atas (Padding) agar judul tidak bertabrakan dengan tombol Sidebar */
+    /* 4. Ruang atas (Padding) */
     .block-container {
         padding-top: 5rem !important; 
         padding-bottom: 6rem !important;
@@ -306,7 +303,8 @@ def inject_enterprise_css():
         box-shadow: 0 0 0 2px var(--text-primary) !important;
     }
 
-    .stButton button {
+    /* 10. Normal Buttons & Download Buttons */
+    .stButton button, .stDownloadButton button {
         background-color: var(--text-primary) !important;
         color: var(--surface) !important;
         border-radius: 20px !important;
@@ -317,13 +315,13 @@ def inject_enterprise_css():
         transition: transform .3s, box-shadow .3s !important;
         width: 100%;
     }
-    .stButton button:hover {
+    .stButton button:hover, .stDownloadButton button:hover {
         transform: translateY(-2px);
         box-shadow: 0 15px 30px rgba(0,0,0,0.15) !important;
     }
-    .stButton button p { color: var(--surface) !important; margin:0;}
+    .stButton button p, .stDownloadButton button p { color: var(--surface) !important; margin:0;}
 
-    /* 10. Notifications */
+    /* 11. Notifications */
     .notification {
         background-color: var(--text-primary);
         color: var(--surface);
@@ -336,7 +334,7 @@ def inject_enterprise_css():
         box-shadow: 0 20px 40px rgba(0,0,0,0.1);
     }
 
-    /* 11. Sidebar Menu Design */
+    /* 12. Sidebar Menu Design */
     [data-testid="stSidebar"] {
         background-color: var(--surface) !important;
         border-right: 1px solid var(--border);
@@ -564,6 +562,49 @@ def view_approval(repo):
                         st.rerun()
         st.write("")
 
+def view_export(repo):
+    st.markdown("<div class='section-title'>Data Export</div>", unsafe_allow_html=True)
+    
+    df = repo.fetch_all()
+    if df.empty:
+        render_empty_state()
+        return
+        
+    with st.container(border=True):
+        st.markdown("<div class='card-title' style='font-size: 24px; margin-bottom: 8px;'>Export Knowledge Base</div>", unsafe_allow_html=True)
+        st.markdown("<div style='color: var(--text-secondary); margin-bottom: 32px; font-weight: 500;'>Download the entire repository data for offline analysis and reporting.</div>", unsafe_allow_html=True)
+        
+        c1, c2 = st.columns(2)
+        
+        with c1:
+            # CSV Download
+            csv_bytes = df.to_csv(index=False).encode("utf-8-sig")
+            st.download_button(
+                label="Download CSV",
+                data=csv_bytes,
+                file_name=f"Knowledge_Base_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+            
+        with c2:
+            # Excel Download
+            try:
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine="openpyxl") as writer:
+                    df.to_excel(writer, index=False, sheet_name="Knowledge_Base")
+                excel_bytes = output.getvalue()
+                
+                st.download_button(
+                    label="Download Excel",
+                    data=excel_bytes,
+                    file_name=f"Knowledge_Base_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
+            except Exception:
+                st.markdown("<div style='color: var(--text-secondary); font-size: 14px; text-align: center; margin-top: 16px;'>Requires 'openpyxl' module for Excel format.</div>", unsafe_allow_html=True)
+
 # ==============================================================================
 # 6. MAIN ROUTING & SIDEBAR
 # ==============================================================================
@@ -579,7 +620,7 @@ def main():
         
         navigation = st.radio(
             "Nav",
-            ["Dashboard", "Browse", "New Entry", "Approval"],
+            ["Dashboard", "Browse", "New Entry", "Approval", "Export"],
             label_visibility="collapsed"
         )
         
@@ -593,6 +634,8 @@ def main():
         view_upload(repo)
     elif navigation == "Approval":
         view_approval(repo)
+    elif navigation == "Export":
+        view_export(repo)
 
 if __name__ == "__main__":
     main()
