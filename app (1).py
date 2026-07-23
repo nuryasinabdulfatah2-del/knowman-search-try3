@@ -246,6 +246,7 @@ def inject_enterprise_css():
     
     .stApp, [data-testid="stAppViewContainer"] { background-color: var(--bg) !important; }
     
+    /* SAFE HEADER MANAGEMENT */
     header[data-testid="stHeader"] { 
         background-color: transparent !important; 
         z-index: 99 !important; 
@@ -386,11 +387,12 @@ def inject_enterprise_css():
     }
     .stButton button p, .stDownloadButton button p { color: var(--surface) !important; margin:0;}
 
+    /* SEMANTIC BUTTONS UPDATE: Verify tetap Biru, Reject Merah, Revision Kuning */
     div[data-testid="stButton"] button:has(p:contains("Reject")) { background-color: var(--sem-red-btn) !important; }
     div[data-testid="stButton"] button:has(p:contains("Reject")):hover { background-color: #C26B6B !important; box-shadow: 0 15px 30px rgba(217, 128, 128, 0.3) !important; }
     
-    div[data-testid="stButton"] button:has(p:contains("Verify")) { background-color: var(--sem-green-btn) !important; }
-    div[data-testid="stButton"] button:has(p:contains("Verify")):hover { background-color: #71B38D !important; box-shadow: 0 15px 30px rgba(140, 200, 164, 0.3) !important; }
+    div[data-testid="stButton"] button:has(p:contains("Verify")) { background-color: var(--accent-blue) !important; }
+    div[data-testid="stButton"] button:has(p:contains("Verify")):hover { background-color: var(--accent-blue-hover) !important; box-shadow: 0 15px 30px rgba(107, 163, 206, 0.25) !important; }
     
     div[data-testid="stButton"] button:has(p:contains("Revision")) { background-color: var(--sem-yellow-btn) !important; }
     div[data-testid="stButton"] button:has(p:contains("Revision")):hover { background-color: #D4A373 !important; box-shadow: 0 15px 30px rgba(229, 185, 110, 0.3) !important; }
@@ -611,7 +613,6 @@ def view_revision(repo):
     for _, row in rev_df.iterrows():
         rid = row['id']
         
-        # Inisialisasi memori AI khusus untuk tiap kotak revisi
         if f'rev_sum_{rid}' not in st.session_state: st.session_state[f'rev_sum_{rid}'] = row['summary']
         if f'rev_root_{rid}' not in st.session_state: st.session_state[f'rev_root_{rid}'] = row['root_cause']
         if f'rev_rec_{rid}' not in st.session_state: st.session_state[f'rev_rec_{rid}'] = row['recommendation']
