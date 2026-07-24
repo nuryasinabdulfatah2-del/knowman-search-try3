@@ -165,7 +165,6 @@ class KnowledgeRepository:
         except Exception:
             return False
 
-# Memaksa cache dibersihkan untuk menghindari TypeError versi sebelumnya
 @st.cache_resource
 def get_repository_3():
     return KnowledgeRepository(DB_PATH)
@@ -246,7 +245,6 @@ def inject_enterprise_css():
     
     .stApp, [data-testid="stAppViewContainer"] { background-color: var(--bg) !important; }
     
-    /* SAFE HEADER MANAGEMENT */
     header[data-testid="stHeader"] { 
         background-color: transparent !important; 
         z-index: 99 !important; 
@@ -387,7 +385,6 @@ def inject_enterprise_css():
     }
     .stButton button p, .stDownloadButton button p { color: var(--surface) !important; margin:0;}
 
-    /* SEMANTIC BUTTONS UPDATE: Verify tetap Biru, Reject Merah, Revision Kuning */
     div[data-testid="stButton"] button:has(p:contains("Reject")) { background-color: var(--sem-red-btn) !important; }
     div[data-testid="stButton"] button:has(p:contains("Reject")):hover { background-color: #C26B6B !important; box-shadow: 0 15px 30px rgba(217, 128, 128, 0.3) !important; }
     
@@ -454,11 +451,16 @@ def render_small_kpi(title, value):
     </div>
     """, unsafe_allow_html=True)
 
-def render_knowledge_card(row):
+def render_knowledge_card(row, compact=False):
     status_str = str(row['status']).replace(" Pending Review", "Pending").replace(" ", "")
     impact_str = str(row['impact']).replace(" ", "")
     
-    st.markdown(f"""
+    # Logika Truncate untuk Tampilan Ringkas
+    summary_text = row['summary']
+    if compact and len(summary_text) > 150:
+        summary_text = summary_text[:150] + "..."
+    
+    card_html = f"""
 <div class="bento">
     <div class="card-title">{row['title']}</div>
     <div class="card-meta">{row['project']} &nbsp;|&nbsp; {row['upload_date']}</div>
@@ -468,13 +470,19 @@ def render_knowledge_card(row):
         <span class="badge badge-category">{row['category']}</span>
     </div>
     <div class="card-section">Summary</div>
-    <div class="card-body">{row['summary']}</div>
+    <div class="card-body">{summary_text}</div>
+"""
+    # Sembunyikan Root Cause & Recommendation jika Compact Mode aktif
+    if not compact:
+        card_html += f"""
     <div class="card-section">Root Cause</div>
     <div class="card-body">{row['root_cause']}</div>
     <div class="card-section">Recommendation</div>
     <div class="card-body" style="font-weight: 600;">{row['recommendation']}</div>
-</div>
-    """, unsafe_allow_html=True)
+"""
+    
+    card_html += "</div>"
+    st.markdown(card_html, unsafe_allow_html=True)
 
 def render_notification(message):
     st.markdown(f"<div class='notification'>{message}</div>", unsafe_allow_html=True)
@@ -534,6 +542,9 @@ def view_dashboard(repo):
 def view_browse(repo):
     st.markdown("<div class='section-title'>Browse Repository</div>", unsafe_allow_html=True)
     
+    # Menambahkan toggle Compact View untuk Browse (Default False)
+    compact_mode = st.toggle("Enable Compact View", value=False, help="Sembunyikan detail isu agar tampilan lebih ringkas")
+    
     df = repo.fetch_all()
     search_query = st.text_input("Search", placeholder="Search title, project or keyword...", label_visibility="collapsed")
     if search_query:
@@ -544,7 +555,7 @@ def view_browse(repo):
         render_empty_state()
     else:
         for _, row in df.iterrows():
-            render_knowledge_card(row)
+            render_knowledge_card(row, compact=compact_mode)
 
 def view_upload(repo):
     st.markdown("<div class='section-title'>New Knowledge Entry</div>", unsafe_allow_html=True)
@@ -675,6 +686,10 @@ def view_revision(repo):
 def view_approval(repo):
     st.markdown("<div class='section-title'>Knowledge Review</div>", unsafe_allow_html=True)
     
+    # Menambahkan toggle Compact View untuk Approval (Default True / Nyala)
+    compact_mode = st.toggle("Enable Compact View", value=True, help="Sembunyikan detail isu untuk menyortir data lebih cepat")
+    st.write("")
+    
     df = repo.fetch_all()
     pending_df = df[df['status'] == 'Pending Review']
     
@@ -683,7 +698,9 @@ def view_approval(repo):
         return
 
     for _, row in pending_df.iterrows():
-        render_knowledge_card(row)
+        # Memparsing state compact ke dalam fungsi render
+        render_knowledge_card(row, compact=compact_mode)
+        
         with st.container(border=True):
             notes = st.text_area("PMO Feedback (Required if returning for revision)", placeholder="Write your feedback to the uploader here...", key=f"note_{row['id']}")
             c1, c2, c3 = st.columns(3)
