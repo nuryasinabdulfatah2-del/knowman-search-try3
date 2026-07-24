@@ -352,6 +352,41 @@ def inject_enterprise_css():
     
     .badge-category { background-color: var(--sem-grey-bg); color: var(--sem-grey-text); border: 1px solid rgba(122, 141, 153, 0.2); }
     
+    /* HTML Details/Summary Expandable Toggle */
+    .custom-details { margin-top: 20px; }
+    .custom-summary {
+        cursor: pointer;
+        font-family: 'Inter', sans-serif !important;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--accent-blue);
+        background-color: rgba(107, 163, 206, 0.1);
+        padding: 8px 16px;
+        border-radius: 8px;
+        display: inline-block;
+        transition: all 0.2s ease;
+        list-style: none;
+    }
+    .custom-summary::-webkit-details-marker { display: none; }
+    .custom-summary:hover {
+        background-color: var(--accent-blue);
+        color: var(--surface);
+    }
+    .custom-details[open] .custom-summary {
+        background-color: var(--text-secondary);
+        color: var(--surface);
+        margin-bottom: 12px;
+    }
+    .details-content {
+        animation: fadeIn 0.3s ease-in-out;
+        padding-top: 16px;
+        border-top: 1px dashed rgba(107, 163, 206, 0.3);
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
     .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {
         background-color: var(--bg) !important;
         border: 1px solid var(--border) !important;
@@ -451,38 +486,58 @@ def render_small_kpi(title, value):
     </div>
     """, unsafe_allow_html=True)
 
-def render_knowledge_card(row, compact=False):
+def render_knowledge_card(row, compact=True):
     status_str = str(row['status']).replace(" Pending Review", "Pending").replace(" ", "")
     impact_str = str(row['impact']).replace(" ", "")
     
-    # Logika Truncate untuk Tampilan Ringkas
     summary_text = row['summary']
-    if compact and len(summary_text) > 150:
-        summary_text = summary_text[:150] + "..."
     
-    card_html = f"""
-<div class="bento">
-    <div class="card-title">{row['title']}</div>
-    <div class="card-meta">{row['project']} &nbsp;|&nbsp; {row['upload_date']}</div>
-    <div style="margin-bottom: 32px;">
-        <span class="badge badge-status-{status_str}">{row['status']}</span>
-        <span class="badge badge-impact-{impact_str}">{row['impact']} Impact</span>
-        <span class="badge badge-category">{row['category']}</span>
-    </div>
-    <div class="card-section">Summary</div>
-    <div class="card-body">{summary_text}</div>
-"""
-    # Sembunyikan Root Cause & Recommendation jika Compact Mode aktif
-    if not compact:
-        card_html += f"""
-    <div class="card-section">Root Cause</div>
-    <div class="card-body">{row['root_cause']}</div>
-    <div class="card-section">Recommendation</div>
-    <div class="card-body" style="font-weight: 600;">{row['recommendation']}</div>
-"""
+    # HTML Base yang selalu muncul
+    base_html = f"""
+    <div class="bento">
+        <div class="card-title">{row['title']}</div>
+        <div class="card-meta">{row['project']} &nbsp;|&nbsp; {row['upload_date']}</div>
+        <div style="margin-bottom: 32px;">
+            <span class="badge badge-status-{status_str}">{row['status']}</span>
+            <span class="badge badge-impact-{impact_str}">{row['impact']} Impact</span>
+            <span class="badge badge-category">{row['category']}</span>
+        </div>
+    """
     
-    card_html += "</div>"
-    st.markdown(card_html, unsafe_allow_html=True)
+    # Logika Compact dengan HTML Native Expander
+    if compact:
+        is_long = len(summary_text) > 150
+        short_summary = summary_text[:150] + "..." if is_long else summary_text
+        
+        base_html += f"""
+        <div class="card-section">Summary (Preview)</div>
+        <div class="card-body">{short_summary}</div>
+        
+        <details class="custom-details">
+            <summary class="custom-summary">Show Full Details</summary>
+            <div class="details-content">
+                <div class="card-section" style="margin-top:0;">Full Summary</div>
+                <div class="card-body">{row['summary']}</div>
+                <div class="card-section">Root Cause</div>
+                <div class="card-body">{row['root_cause']}</div>
+                <div class="card-section">Recommendation</div>
+                <div class="card-body" style="font-weight: 600;">{row['recommendation']}</div>
+            </div>
+        </details>
+        </div>
+        """
+    else:
+        base_html += f"""
+        <div class="card-section">Summary</div>
+        <div class="card-body">{row['summary']}</div>
+        <div class="card-section">Root Cause</div>
+        <div class="card-body">{row['root_cause']}</div>
+        <div class="card-section">Recommendation</div>
+        <div class="card-body" style="font-weight: 600;">{row['recommendation']}</div>
+        </div>
+        """
+        
+    st.markdown(base_html, unsafe_allow_html=True)
 
 def render_notification(message):
     st.markdown(f"<div class='notification'>{message}</div>", unsafe_allow_html=True)
@@ -542,8 +597,7 @@ def view_dashboard(repo):
 def view_browse(repo):
     st.markdown("<div class='section-title'>Browse Repository</div>", unsafe_allow_html=True)
     
-    # Menambahkan toggle Compact View untuk Browse (Default False)
-    compact_mode = st.toggle("Enable Compact View", value=False, help="Sembunyikan detail isu agar tampilan lebih ringkas")
+    compact_mode = st.toggle("Enable Compact View", value=True, help="Sembunyikan detail isu agar tampilan lebih ringkas")
     
     df = repo.fetch_all()
     search_query = st.text_input("Search", placeholder="Search title, project or keyword...", label_visibility="collapsed")
@@ -686,7 +740,6 @@ def view_revision(repo):
 def view_approval(repo):
     st.markdown("<div class='section-title'>Knowledge Review</div>", unsafe_allow_html=True)
     
-    # Menambahkan toggle Compact View untuk Approval (Default True / Nyala)
     compact_mode = st.toggle("Enable Compact View", value=True, help="Sembunyikan detail isu untuk menyortir data lebih cepat")
     st.write("")
     
@@ -698,7 +751,7 @@ def view_approval(repo):
         return
 
     for _, row in pending_df.iterrows():
-        # Memparsing state compact ke dalam fungsi render
+        # Parsing state compact ke fungsi render
         render_knowledge_card(row, compact=compact_mode)
         
         with st.container(border=True):
