@@ -165,6 +165,17 @@ class KnowledgeRepository:
         except Exception:
             return False
 
+    def delete_record(self, record_id):
+        try:
+            conn = self.get_connection()
+            cur = conn.cursor()
+            cur.execute("DELETE FROM knowledge WHERE id = ?", (record_id,))
+            conn.commit()
+            conn.close()
+            return True
+        except Exception:
+            return False
+
 @st.cache_resource
 def get_repository_3():
     return KnowledgeRepository(DB_PATH)
@@ -429,6 +440,10 @@ def inject_enterprise_css():
     div[data-testid="stButton"] button:has(p:contains("Revision")) { background-color: var(--sem-yellow-btn) !important; }
     div[data-testid="stButton"] button:has(p:contains("Revision")):hover { background-color: #D4A373 !important; box-shadow: 0 15px 30px rgba(229, 185, 110, 0.3) !important; }
 
+    /* Delete Button Specific Styling */
+    div[data-testid="stButton"] button:has(p:contains("Delete")) { background-color: var(--text-secondary) !important; }
+    div[data-testid="stButton"] button:has(p:contains("Delete")):hover { background-color: var(--text-primary) !important; box-shadow: 0 15px 30px rgba(30, 42, 50, 0.3) !important; }
+
     .notification {
         background-color: var(--accent-blue);
         color: var(--surface);
@@ -486,7 +501,6 @@ def render_knowledge_card(row, compact=True):
     status_str = str(row['status']).replace(" Pending Review", "Pending").replace(" ", "")
     impact_str = str(row['impact']).replace(" ", "")
     
-    # Mencegah Markdown Parsing Error dengan mengganti newline dengan <br>
     sum_txt = str(row['summary']).replace('\n', '<br>')
     rc_txt = str(row['root_cause']).replace('\n', '<br>')
     rec_txt = str(row['recommendation']).replace('\n', '<br>')
@@ -748,16 +762,22 @@ def view_approval(repo):
         
         with st.container(border=True):
             notes = st.text_area("PMO Feedback (Required if returning for revision)", placeholder="Write your feedback to the uploader here...", key=f"note_{row['id']}")
-            c1, c2, c3 = st.columns(3)
+            
+            # Kolom diubah menjadi 4 untuk menampung tombol Delete
+            c1, c2, c3, c4 = st.columns(4)
             with c1:
+                if st.button("Delete", key=f"del_{row['id']}"):
+                    repo.delete_record(row['id'])
+                    st.rerun()
+            with c2:
                 if st.button("Reject (Final)", key=f"rej_{row['id']}"):
                     repo.update_status(row['id'], "Rejected", notes)
                     st.rerun()
-            with c2:
+            with c3:
                 if st.button("Needs Revision", key=f"rev_{row['id']}"):
                     repo.update_status(row['id'], "Needs Revision", notes)
                     st.rerun()
-            with c3:
+            with c4:
                 if st.button("Verify", key=f"ver_{row['id']}"):
                     repo.update_status(row['id'], "Verified", notes)
                     st.rerun()
@@ -816,7 +836,7 @@ def main():
             label_visibility="collapsed"
         )
         
-        st.markdown("<div style='margin-top: 60px; padding-left: 10px; font-size: 12px; font-weight: 600; color: var(--text-secondary); font-family: \"Inter\", sans-serif;'>Repository<br>Version 1.1</div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top: 60px; padding-left: 10px; font-size: 12px; font-weight: 600; color: var(--text-secondary); font-family: \"Inter\", sans-serif;'>Repository<br>Version 1.2</div>", unsafe_allow_html=True)
 
     if navigation == "Dashboard":
         view_dashboard(repo)
