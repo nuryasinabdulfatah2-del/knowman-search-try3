@@ -337,7 +337,7 @@ def inject_enterprise_css():
     .card-title { font-size: 28px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.2; margin-bottom: 8px; color: var(--text-primary); font-family: 'Inter', sans-serif !important;}
     .card-meta { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 32px; font-family: 'Inter', sans-serif !important;}
     .card-section { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-blue); margin-top: 24px; margin-bottom: 8px; border-bottom: 1px solid rgba(107,163,206,0.2); padding-bottom: 4px; font-family: 'Inter', sans-serif !important;}
-    .card-body { font-size: 17px; font-weight: 400; line-height: 1.6; color: var(--text-primary); font-family: 'Inter', sans-serif !important;}
+    .card-body { font-size: 15px; font-weight: 400; line-height: 1.6; color: var(--text-primary); font-family: 'Inter', sans-serif !important;}
     
     .badge { display: inline-block; padding: 6px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 700; margin-right: 8px; font-family: 'Inter', sans-serif !important;}
     
@@ -471,93 +471,86 @@ def inject_enterprise_css():
     """, unsafe_allow_html=True)
 
 def render_big_kpi(title, value):
-    st.markdown(f"""
-    <div class="bento">
-        <div class="kpi-big-val">{value}</div>
-        <div class="kpi-big-title">{title}</div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"""<div class="bento">
+<div class="kpi-big-val">{value}</div>
+<div class="kpi-big-title">{title}</div>
+</div>""", unsafe_allow_html=True)
 
 def render_small_kpi(title, value):
-    st.markdown(f"""
-    <div class="bento" style="padding: 30px;">
-        <div class="kpi-small-val">{value}</div>
-        <div class="kpi-small-title">{title}</div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"""<div class="bento" style="padding: 30px;">
+<div class="kpi-small-val">{value}</div>
+<div class="kpi-small-title">{title}</div>
+</div>""", unsafe_allow_html=True)
 
 def render_knowledge_card(row, compact=True):
     status_str = str(row['status']).replace(" Pending Review", "Pending").replace(" ", "")
     impact_str = str(row['impact']).replace(" ", "")
     
-    summary_text = row['summary']
+    # Mencegah Markdown Parsing Error dengan mengganti newline dengan <br>
+    sum_txt = str(row['summary']).replace('\n', '<br>')
+    rc_txt = str(row['root_cause']).replace('\n', '<br>')
+    rec_txt = str(row['recommendation']).replace('\n', '<br>')
     
-    # HTML Base yang selalu muncul
-    base_html = f"""
-    <div class="bento">
-        <div class="card-title">{row['title']}</div>
-        <div class="card-meta">{row['project']} &nbsp;|&nbsp; {row['upload_date']}</div>
-        <div style="margin-bottom: 32px;">
-            <span class="badge badge-status-{status_str}">{row['status']}</span>
-            <span class="badge badge-impact-{impact_str}">{row['impact']} Impact</span>
-            <span class="badge badge-category">{row['category']}</span>
-        </div>
-    """
-    
-    # Logika Compact dengan HTML Native Expander
     if compact:
-        is_long = len(summary_text) > 150
-        short_summary = summary_text[:150] + "..." if is_long else summary_text
+        is_long = len(str(row['summary'])) > 150
+        short_summary = (str(row['summary'])[:150] + "...").replace('\n', '<br>') if is_long else sum_txt
         
-        base_html += f"""
-        <div class="card-section">Summary (Preview)</div>
-        <div class="card-body">{short_summary}</div>
-        
-        <details class="custom-details">
-            <summary class="custom-summary">Show Full Details</summary>
-            <div class="details-content">
-                <div class="card-section" style="margin-top:0;">Full Summary</div>
-                <div class="card-body">{row['summary']}</div>
-                <div class="card-section">Root Cause</div>
-                <div class="card-body">{row['root_cause']}</div>
-                <div class="card-section">Recommendation</div>
-                <div class="card-body" style="font-weight: 600;">{row['recommendation']}</div>
-            </div>
-        </details>
-        </div>
-        """
+        card_html = f"""<div class="bento">
+<div class="card-title">{row['title']}</div>
+<div class="card-meta">{row['project']} &nbsp;|&nbsp; {row['upload_date']}</div>
+<div style="margin-bottom: 32px;">
+<span class="badge badge-status-{status_str}">{row['status']}</span>
+<span class="badge badge-impact-{impact_str}">{row['impact']} Impact</span>
+<span class="badge badge-category">{row['category']}</span>
+</div>
+<div class="card-section">Summary (Preview)</div>
+<div class="card-body">{short_summary}</div>
+<details class="custom-details">
+<summary class="custom-summary">Show Full Details</summary>
+<div class="details-content">
+<div class="card-section" style="margin-top:0;">Full Summary</div>
+<div class="card-body">{sum_txt}</div>
+<div class="card-section">Root Cause</div>
+<div class="card-body">{rc_txt}</div>
+<div class="card-section">Recommendation</div>
+<div class="card-body" style="font-weight: 600;">{rec_txt}</div>
+</div>
+</details>
+</div>"""
     else:
-        base_html += f"""
-        <div class="card-section">Summary</div>
-        <div class="card-body">{row['summary']}</div>
-        <div class="card-section">Root Cause</div>
-        <div class="card-body">{row['root_cause']}</div>
-        <div class="card-section">Recommendation</div>
-        <div class="card-body" style="font-weight: 600;">{row['recommendation']}</div>
-        </div>
-        """
+        card_html = f"""<div class="bento">
+<div class="card-title">{row['title']}</div>
+<div class="card-meta">{row['project']} &nbsp;|&nbsp; {row['upload_date']}</div>
+<div style="margin-bottom: 32px;">
+<span class="badge badge-status-{status_str}">{row['status']}</span>
+<span class="badge badge-impact-{impact_str}">{row['impact']} Impact</span>
+<span class="badge badge-category">{row['category']}</span>
+</div>
+<div class="card-section">Summary</div>
+<div class="card-body">{sum_txt}</div>
+<div class="card-section">Root Cause</div>
+<div class="card-body">{rc_txt}</div>
+<div class="card-section">Recommendation</div>
+<div class="card-body" style="font-weight: 600;">{rec_txt}</div>
+</div>"""
         
-    st.markdown(base_html, unsafe_allow_html=True)
+    st.markdown(card_html, unsafe_allow_html=True)
 
 def render_notification(message):
     st.markdown(f"<div class='notification'>{message}</div>", unsafe_allow_html=True)
 
 def render_empty_state(title="Knowledge Repository", subtitle="No entries available.<br>Create your first knowledge entry to start building organizational memory."):
-    st.markdown(f"""
-    <div class="bento" style="text-align: center; padding: 80px 40px;">
-        <div class="section-title" style="margin-bottom: 16px; font-family: 'Inter', sans-serif !important; font-size: 32px;">{title}</div>
-        <div class="card-body" style="color: var(--text-secondary);">{subtitle}</div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"""<div class="bento" style="text-align: center; padding: 80px 40px;">
+<div class="section-title" style="margin-bottom: 16px; font-family: 'Inter', sans-serif !important; font-size: 32px;">{title}</div>
+<div class="card-body" style="color: var(--text-secondary);">{subtitle}</div>
+</div>""", unsafe_allow_html=True)
 
 # ==============================================================================
 # 6. PAGE VIEWS
 # ==============================================================================
 def view_dashboard(repo):
-    st.markdown("""
-    <div class="hero-text">PT Bukit Asam<br>Knowledge<br>Management</div>
-    <div class="hero-sub">Capture organizational knowledge and transform operational experience into strategic assets.</div>
-    """, unsafe_allow_html=True)
+    st.markdown("""<div class="hero-text">PT Bukit Asam<br>Knowledge<br>Management</div>
+<div class="hero-sub">Capture organizational knowledge and transform operational experience into strategic assets.</div>""", unsafe_allow_html=True)
 
     df = repo.fetch_all()
     if df.empty:
@@ -751,7 +744,6 @@ def view_approval(repo):
         return
 
     for _, row in pending_df.iterrows():
-        # Parsing state compact ke fungsi render
         render_knowledge_card(row, compact=compact_mode)
         
         with st.container(border=True):
