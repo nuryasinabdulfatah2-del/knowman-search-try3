@@ -110,7 +110,10 @@ def upload_to_gdrive(file_bytes_io, filename):
 
         # Upload file
         uploaded_file = service.files().create(
-            body=file_metadata, media_body=media, fields='id, webViewLink'
+            body=file_metadata, 
+            media_body=media, 
+            fields='id, webViewLink',
+            supportsAllDrives=True # PASTIKAN BARIS INI ADA
         ).execute()
         
         file_id = uploaded_file.get('id')
