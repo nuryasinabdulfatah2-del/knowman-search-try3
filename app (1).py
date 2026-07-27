@@ -550,7 +550,7 @@ def view_upload(repo):
                     
                     # Logika Auto-Upload ke GDrive
                     if st.session_state.uploaded_file_bytes:
-                        if GDRIVE_AVAILABLE and os.path.exists(GDRIVE_CREDENTIALS_FILE):
+                        if GDRIVE_AVAILABLE and ("gcp_service_account" in st.secrets or os.path.exists(GDRIVE_CREDENTIALS_FILE)):
                             with st.spinner("Mengunggah dokumen asli ke Google Drive..."):
                                 link = upload_to_gdrive(st.session_state.uploaded_file_bytes, st.session_state.uploaded_filename)
                                 if link: auto_gdrive_link = link
@@ -645,7 +645,7 @@ def view_revision(repo):
                     new_gdrive_link = row['gdrive_link']
                     # Auto upload GDrive untuk revisi jika ada file baru yang diunggah
                     if st.session_state[f'rev_file_{rid}']:
-                        if GDRIVE_AVAILABLE and os.path.exists(GDRIVE_CREDENTIALS_FILE):
+                       if GDRIVE_AVAILABLE and ("gcp_service_account" in st.secrets or os.path.exists(GDRIVE_CREDENTIALS_FILE)):
                             link = upload_to_gdrive(st.session_state[f'rev_file_{rid}'], st.session_state[f'rev_filename_{rid}'])
                             if link: new_gdrive_link = link
                     
