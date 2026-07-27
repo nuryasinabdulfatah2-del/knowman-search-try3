@@ -218,22 +218,21 @@ def parse_document(file_bytes, filename) -> str:
     return ""
 
 def extract_knowledge(text: str) -> dict:
-    """Menganalisis teks menggunakan Google Gemini AI (atau Fallback ke Keyword)"""
+    """Menganalisis teks menggunakan Google Gemini AI (dengan Detektor Error)"""
     res = {"summary": "", "root_cause": "", "recommendation": ""}
     if not text: return res
 
-    # 1. COBA MENGGUNAKAN GEMINI AI (Jika API Key ada)
+    # 1. COBA MENGGUNAKAN GEMINI AI
     if GEMINI_AVAILABLE and "GEMINI_API_KEY" in st.secrets:
         try:
             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
             model = genai.GenerativeModel('gemini-1.5-flash')
             
             prompt = f"""
-            Anda adalah analis Knowledge Management System profesional.
-            Tugas Anda adalah membaca teks acak di bawah ini, lalu merangkumnya menjadi 3 poin penting.
+            Anda adalah analis Knowledge Management profesional.
+            Baca teks ini dan rangkum menjadi 3 poin penting.
             
-            Gunakan bahasa yang profesional dan to the point.
-            Balas HANYA dengan format JSON yang valid persis seperti ini (tanpa format markdown tambahan):
+            WAJIB balas HANYA dengan format JSON persis seperti ini tanpa tambahan teks apapun di awal atau akhir:
             {{
                 "summary": "Tuliskan ringkasan masalah utama di sini...",
                 "root_cause": "Tuliskan akar penyebab terjadinya masalah di sini...",
@@ -245,8 +244,13 @@ def extract_knowledge(text: str) -> dict:
             """
             response = model.generate_content(prompt)
             
-            # Membersihkan balasan Gemini agar format JSON-nya bisa dibaca
-            clean_text = response.text.replace("```json", "").replace("```", "").strip()
+            # Pembersihan super ketat agar format JSON tidak tersedak
+            clean_text = response.text.strip()
+            if clean_text.startswith("```json"): clean_text = clean_text[7:]
+            elif clean_text.startswith("```"): clean_text = clean_text[3:]
+            if clean_text.endswith("```"): clean_text = clean_text[:-3]
+            clean_text = clean_text.strip()
+            
             ai_data = json.loads(clean_text)
             
             res["summary"] = ai_data.get("summary", "")
@@ -255,10 +259,13 @@ def extract_knowledge(text: str) -> dict:
             return res
             
         except Exception as e:
-            # Jika Gemini gagal (misal kuota habis), ia akan lanjut ke Metode Fallback di bawah
-            pass
+            # SENGAJA DIMUNCULKAN AGAR KITA TAHU PENYEBABNYA
+            st.error(f"❌ GEMINI GAGAL: {e}")
+            
+    else:
+        st.warning("⚠️ GEMINI_API_KEY tidak ditemukan di Streamlit Secrets. Aplikasi menggunakan metode lawas.")
 
-    # 2. METODE FALLBACK (Keyword Sederhana Jika Gemini Gagal/Belum Dikonfigurasi)
+    # 2. METODE FALLBACK (Keyword Sederhana)
     sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if len(s) > 15]
     def extract_by_keywords(kw_list):
         matched = [s for s in sentences if any(kw in s.lower() for kw in kw_list)]
