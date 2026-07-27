@@ -57,7 +57,6 @@ DIVISION_FOLDERS = {
     "Divisi Teknologi Informasi": "1-bPwqpCeY4yRtdGpzfZ4UmjmQKSTk7AV",
     "Divisi SDM & Umum": "14Q949Rt_UNyEKYenuneBZXlgzznUMOnY",
     "Lainnya": "1Pdkc9LD7XFkFhioznFWIZozp8lyqb_q-"
-    "Lainnya": "1Pdkc9LD7XFkFhioznFWIZozp8lyqb_q-" 
 }
 DIVISION_OPTIONS = list(DIVISION_FOLDERS.keys())
 
