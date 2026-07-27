@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 PT Bukit Asam Knowledge Management System
-Design System: Clean Bento Box + Semantic Soft Colors
-Architecture: Object-Oriented, AI Revise Parsing, Auto GDrive Integration, Dynamic Routing
+Architecture: Object-Oriented, Auto GDrive Integration, Dynamic Routing, GEMINI AI INTEGRATION
 """
 
 import streamlit as st
@@ -16,7 +15,7 @@ import io
 import re
 
 # ==============================================================================
-# 1. OPTIONAL IMPORTS 
+# 1. OPTIONAL IMPORTS (DOCUMENT PARSING, GDRIVE, & GEMINI)
 # ==============================================================================
 try:
     import pdfplumber
@@ -44,11 +43,17 @@ try:
 except ImportError:
     GDRIVE_AVAILABLE = False
 
+try:
+    import google.generativeai as genai
+    import json
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+
 # ==============================================================================
 # 2. CORE CONFIGURATION
 # ==============================================================================
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "km_enterprise.db")
-
 GDRIVE_CREDENTIALS_FILE = "gdrive_credentials.json" 
 
 DIVISION_FOLDERS = {
@@ -59,12 +64,12 @@ DIVISION_FOLDERS = {
     "Lainnya": "1Pdkc9LD7XFkFhioznFWIZozp8lyqb_q-"
 }
 DIVISION_OPTIONS = list(DIVISION_FOLDERS.keys())
-
 IMPACT_LEVELS = ["High", "Medium", "Low"]
 
-KEYWORDS_SUMMARY = ["isu", "masalah", "kendala", "permasalahan", "issue", "problem", "hambatan"]
-KEYWORDS_ROOT_CAUSE = ["akar masalah", "akar penyebab", "disebabkan", "root cause", "sumber masalah"]
-KEYWORDS_RECOMMENDATION = ["rekomendasi", "solusi", "usulan", "tindak lanjut", "saran", "mitigasi"]
+# Keywords Lama (Untuk Fallback jika Gemini tidak tersedia)
+KEYWORDS_SUMMARY = ["isu", "masalah", "kendala", "permasalahan", "issue", "problem"]
+KEYWORDS_ROOT_CAUSE = ["akar masalah", "akar penyebab", "disebabkan", "root cause"]
+KEYWORDS_RECOMMENDATION = ["rekomendasi", "solusi", "usulan", "tindak lanjut", "saran"]
 
 def create_apple_theme():
     font_family = "'Inter', -apple-system, sans-serif"
@@ -83,38 +88,28 @@ def create_apple_theme():
 # 3. GOOGLE DRIVE UPLOADER 
 # ==============================================================================
 def upload_to_gdrive(file_bytes_io, filename, target_folder_id):
-    if not GDRIVE_AVAILABLE:
-        return None
+    if not GDRIVE_AVAILABLE: return None
     try:
         scopes = ['https://www.googleapis.com/auth/drive.file']
         creds = None
         if "gcp_service_account" in st.secrets:
-            creds = service_account.Credentials.from_service_account_info(
-                st.secrets["gcp_service_account"], scopes=scopes
-            )
+            creds = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scopes)
         elif os.path.exists(GDRIVE_CREDENTIALS_FILE):
-            creds = service_account.Credentials.from_service_account_file(
-                GDRIVE_CREDENTIALS_FILE, scopes=scopes
-            )
-        else:
-            return None
+            creds = service_account.Credentials.from_service_account_file(GDRIVE_CREDENTIALS_FILE, scopes=scopes)
+        else: return None
 
         service = build('drive', 'v3', credentials=creds)
         file_bytes_io.seek(0)
         media = MediaIoBaseUpload(file_bytes_io, mimetype='application/octet-stream', resumable=True)
         file_metadata = {'name': filename, 'parents': [target_folder_id]}
 
-        uploaded_file = service.files().create(
-            body=file_metadata, media_body=media, fields='id, webViewLink', supportsAllDrives=True 
-        ).execute()
-        
+        uploaded_file = service.files().create(body=file_metadata, media_body=media, fields='id, webViewLink', supportsAllDrives=True).execute()
         file_id = uploaded_file.get('id')
         file_link = uploaded_file.get('webViewLink')
         
         try:
             service.permissions().create(fileId=file_id, body={'type': 'anyone', 'role': 'reader'}, supportsAllDrives=True).execute()
-        except Exception:
-            pass
+        except Exception: pass
         return file_link
     except Exception as e:
         st.error(f"Gagal mengunggah ke GDrive: {e}")
@@ -136,21 +131,7 @@ class KnowledgeRepository:
     def _init_db(self):
         conn = self.get_connection()
         cur = conn.cursor()
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS knowledge (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                title TEXT NOT NULL,
-                project TEXT,
-                category TEXT,
-                impact TEXT,
-                status TEXT DEFAULT 'Pending Review',
-                summary TEXT,
-                root_cause TEXT,
-                recommendation TEXT,
-                uploader TEXT,
-                upload_date TEXT
-            )
-        """)
+        cur.execute("""CREATE TABLE IF NOT EXISTS knowledge (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, project TEXT, category TEXT, impact TEXT, status TEXT DEFAULT 'Pending Review', summary TEXT, root_cause TEXT, recommendation TEXT, uploader TEXT, upload_date TEXT)""")
         cur.execute("PRAGMA table_info(knowledge)")
         columns = [column[1] for column in cur.fetchall()]
         if 'reviewer_notes' not in columns:
@@ -175,19 +156,11 @@ class KnowledgeRepository:
         try:
             conn = self.get_connection()
             cur = conn.cursor()
-            cur.execute("""
-                INSERT INTO knowledge (title, project, category, impact, status, summary, root_cause, recommendation, uploader, upload_date, reviewer_notes, gdrive_link, division)
-                VALUES (?, ?, ?, ?, 'Pending Review', ?, ?, ?, ?, ?, '', ?, ?)
-            """, (
-                data['title'], data['project'], data['division'], data['impact'], 
-                data['summary'], data['root_cause'], data['recommendation'], 
-                data['uploader'], datetime.now().strftime("%d %B %Y"), data.get('gdrive_link', ''), data.get('division', 'Lainnya')
-            ))
+            cur.execute("""INSERT INTO knowledge (title, project, category, impact, status, summary, root_cause, recommendation, uploader, upload_date, reviewer_notes, gdrive_link, division) VALUES (?, ?, ?, ?, 'Pending Review', ?, ?, ?, ?, ?, '', ?, ?)""", (data['title'], data['project'], data['division'], data['impact'], data['summary'], data['root_cause'], data['recommendation'], data['uploader'], datetime.now().strftime("%d %B %Y"), data.get('gdrive_link', ''), data.get('division', 'Lainnya')))
             conn.commit()
             conn.close()
             return True
-        except Exception:
-            return False
+        except Exception: return False
 
     def update_status(self, record_id, new_status, notes=""):
         try:
@@ -197,26 +170,17 @@ class KnowledgeRepository:
             conn.commit()
             conn.close()
             return True
-        except Exception:
-            return False
+        except Exception: return False
 
     def resubmit_record(self, record_id, data):
         try:
             conn = self.get_connection()
             cur = conn.cursor()
-            cur.execute("""
-                UPDATE knowledge 
-                SET title = ?, project = ?, category = ?, impact = ?, summary = ?, root_cause = ?, recommendation = ?, gdrive_link = ?, division = ?, status = 'Pending Review'
-                WHERE id = ?
-            """, (
-                data['title'], data['project'], data['division'], data['impact'], 
-                data['summary'], data['root_cause'], data['recommendation'], data.get('gdrive_link', ''), data.get('division', 'Lainnya'), record_id
-            ))
+            cur.execute("""UPDATE knowledge SET title = ?, project = ?, category = ?, impact = ?, summary = ?, root_cause = ?, recommendation = ?, gdrive_link = ?, division = ?, status = 'Pending Review' WHERE id = ?""", (data['title'], data['project'], data['division'], data['impact'], data['summary'], data['root_cause'], data['recommendation'], data.get('gdrive_link', ''), data.get('division', 'Lainnya'), record_id))
             conn.commit()
             conn.close()
             return True
-        except Exception:
-            return False
+        except Exception: return False
 
     def delete_record(self, record_id):
         try:
@@ -226,17 +190,17 @@ class KnowledgeRepository:
             conn.commit()
             conn.close()
             return True
-        except Exception:
-            return False
+        except Exception: return False
 
 @st.cache_resource
 def get_repository():
     return KnowledgeRepository(DB_PATH)
 
 # ==============================================================================
-# 5. AI AUTO-FILL ENGINE
+# 5. AI GENERATIVE ENGINE (GEMINI INTEGRATION)
 # ==============================================================================
 def parse_document(file_bytes, filename) -> str:
+    """Membaca file dan mengekstrak teks kasarnya"""
     if not file_bytes: return ""
     try:
         filename = filename.lower()
@@ -254,8 +218,47 @@ def parse_document(file_bytes, filename) -> str:
     return ""
 
 def extract_knowledge(text: str) -> dict:
+    """Menganalisis teks menggunakan Google Gemini AI (atau Fallback ke Keyword)"""
     res = {"summary": "", "root_cause": "", "recommendation": ""}
     if not text: return res
+
+    # 1. COBA MENGGUNAKAN GEMINI AI (Jika API Key ada)
+    if GEMINI_AVAILABLE and "GEMINI_API_KEY" in st.secrets:
+        try:
+            genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            
+            prompt = f"""
+            Anda adalah analis Knowledge Management System profesional.
+            Tugas Anda adalah membaca teks acak di bawah ini, lalu merangkumnya menjadi 3 poin penting.
+            
+            Gunakan bahasa yang profesional dan to the point.
+            Balas HANYA dengan format JSON yang valid persis seperti ini (tanpa format markdown tambahan):
+            {{
+                "summary": "Tuliskan ringkasan masalah utama di sini...",
+                "root_cause": "Tuliskan akar penyebab terjadinya masalah di sini...",
+                "recommendation": "Tuliskan rekomendasi atau solusi yang diajukan di sini..."
+            }}
+
+            TEKS DOKUMEN:
+            {text[:15000]} 
+            """
+            response = model.generate_content(prompt)
+            
+            # Membersihkan balasan Gemini agar format JSON-nya bisa dibaca
+            clean_text = response.text.replace("```json", "").replace("```", "").strip()
+            ai_data = json.loads(clean_text)
+            
+            res["summary"] = ai_data.get("summary", "")
+            res["root_cause"] = ai_data.get("root_cause", "")
+            res["recommendation"] = ai_data.get("recommendation", "")
+            return res
+            
+        except Exception as e:
+            # Jika Gemini gagal (misal kuota habis), ia akan lanjut ke Metode Fallback di bawah
+            pass
+
+    # 2. METODE FALLBACK (Keyword Sederhana Jika Gemini Gagal/Belum Dikonfigurasi)
     sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if len(s) > 15]
     def extract_by_keywords(kw_list):
         matched = [s for s in sentences if any(kw in s.lower() for kw in kw_list)]
@@ -404,7 +407,6 @@ def view_browse(repo):
 def view_upload(repo):
     st.markdown("<div class='section-title'>New Knowledge Entry</div>", unsafe_allow_html=True)
     
-    # 1. INISIALISASI SAKLAR NOTIFIKASI
     if 'save_success' not in st.session_state:
         st.session_state.save_success = False
         
@@ -414,19 +416,17 @@ def view_upload(repo):
     if 'uploaded_file_bytes' not in st.session_state: st.session_state.uploaded_file_bytes = None
     if 'uploaded_filename' not in st.session_state: st.session_state.uploaded_filename = ""
     
-    # 2. MUNCULKAN NOTIFIKASI JIKA SAKLAR MENYALA
-    # (Diletakkan di atas agar tidak hilang saat direfresh)
     if st.session_state.save_success:
         st.success("✅ HORE! Dokumen berhasil disimpan ke Database! Form di bawah telah otomatis dikosongkan.")
         st.toast("Data Tersimpan!", icon="✅")
-        st.session_state.save_success = False # Matikan saklar agar hilang di input selanjutnya
+        st.session_state.save_success = False
         
     with st.container(border=True):
-        st.markdown("<div class='card-title' style='font-size: 20px; margin-bottom: 16px;'>AI Document Parsing & Auto-Upload</div>", unsafe_allow_html=True)
+        st.markdown("<div class='card-title' style='font-size: 20px; margin-bottom: 16px;'>Gemini AI Document Parsing & Auto-Upload</div>", unsafe_allow_html=True)
         uploaded_file = st.file_uploader("Format: PDF, DOCX, TXT", type=["pdf", "txt", "docx"], label_visibility="collapsed")
         
-        if uploaded_file and st.button("Analyze Document"):
-            with st.spinner("Extracting knowledge..."):
+        if uploaded_file and st.button("Analyze with Gemini AI"):
+            with st.spinner("Gemini is reading and analyzing your document..."):
                 file_bytes = io.BytesIO(uploaded_file.read())
                 st.session_state.uploaded_file_bytes = file_bytes
                 st.session_state.uploaded_filename = uploaded_file.name
@@ -437,10 +437,14 @@ def view_upload(repo):
                     st.session_state.ai_summary = ai_result["summary"]
                     st.session_state.ai_root = ai_result["root_cause"]
                     st.session_state.ai_rec = ai_result["recommendation"]
-                    st.toast("AI berhasil mengekstrak dokumen!", icon="🤖")
+                    
+                    if "GEMINI_API_KEY" in st.secrets:
+                        st.toast("Gemini AI berhasil meringkas dokumen!", icon="✨")
+                    else:
+                        st.toast("Ekstraksi kata kunci berhasil! (Mode Offline)", icon="🔍")
                     st.rerun() 
                 else:
-                    st.error("Could not extract text from document.")
+                    st.error("Buku/Dokumen tidak bisa diekstrak teksnya (Mungkin berisi gambar scan).")
     st.write("")
     
     with st.container(border=True):
@@ -480,14 +484,12 @@ def view_upload(repo):
                     }
                     
                     if repo.insert(data):
-                        # 3. BERSIHKAN SEMUA MEMORI DRAFT
                         st.session_state.ai_summary = ""
                         st.session_state.ai_root = ""
                         st.session_state.ai_rec = ""
                         st.session_state.uploaded_file_bytes = None
                         st.session_state.uploaded_filename = ""
                         
-                        # 4. NYALAKAN SAKLAR & PAKSA REFRESH HALAMAN
                         st.session_state.save_success = True
                         st.rerun()
                     else:
@@ -516,8 +518,8 @@ def view_revision(repo):
             st.markdown(f"""<div style="background-color: var(--sem-yellow-bg); border-left: 4px solid var(--sem-yellow-text); padding: 16px 20px; border-radius: 12px; margin-bottom: 24px; margin-top: 12px;"><div style="font-weight: 700; color: var(--sem-yellow-text); margin-bottom: 4px; font-size: 13px; text-transform: uppercase;">PMO Feedback</div><div style="color: var(--text-primary); font-size: 15px; line-height: 1.5;">{row['reviewer_notes']}</div></div>""", unsafe_allow_html=True)
             
             uploaded_rev = st.file_uploader("Upload Revisi Dokumen", type=["pdf", "txt", "docx"], key=f"up_rev_{rid}")
-            if uploaded_rev and st.button("Extract Revised Knowledge", key=f"btn_rev_{rid}"):
-                with st.spinner("Extracting..."):
+            if uploaded_rev and st.button("Extract Revised Knowledge (Gemini)", key=f"btn_rev_{rid}"):
+                with st.spinner("Gemini AI is Extracting..."):
                     file_bytes = io.BytesIO(uploaded_rev.read())
                     st.session_state[f'rev_file_{rid}'] = file_bytes
                     st.session_state[f'rev_filename_{rid}'] = uploaded_rev.name
