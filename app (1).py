@@ -512,7 +512,7 @@ def view_browse(repo):
 def view_upload(repo):
     st.markdown("<div class='section-title'>New Knowledge Entry</div>", unsafe_allow_html=True)
     
-    # 1. INISIALISASI "SAKLAR" NOTIFIKASI
+    # 1. INISIALISASI SAKLAR NOTIFIKASI
     if 'save_success' not in st.session_state: 
         st.session_state.save_success = False
         
@@ -522,6 +522,19 @@ def view_upload(repo):
     if 'uploaded_file_bytes' not in st.session_state: st.session_state.uploaded_file_bytes = None
     if 'uploaded_filename' not in st.session_state: st.session_state.uploaded_filename = ""
     
+    # 2. TEMPAT NOTIFIKASI DI LUAR FORMULIR
+    # Karena diletakkan di luar st.form, Streamlit tidak akan memblokirnya!
+    notif_placeholder = st.empty()
+    
+    if st.session_state.save_success:
+        notif_placeholder.markdown(
+            "<div style='background-color: var(--sem-green-bg); border-left: 4px solid var(--sem-green-text); padding: 16px 20px; border-radius: 12px; margin-bottom: 24px;'><div style='font-weight: 700; color: var(--sem-green-text); font-size: 16px;'>✅ Entry Berhasil Disimpan!</div><div style='color: var(--text-primary); font-size: 14px; margin-top: 4px;'>Dokumen telah masuk ke database dan form telah dikosongkan.</div></div>", 
+            unsafe_allow_html=True
+        )
+        st.toast("Tersimpan ke database!", icon="✅")
+        # Matikan saklar agar notifikasi hilang saat user mengetik entri selanjutnya
+        st.session_state.save_success = False 
+
     with st.container(border=True):
         st.markdown("<div class='card-title' style='font-size: 20px; margin-bottom: 16px;'>AI Document Parsing & Auto-Upload</div>", unsafe_allow_html=True)
         st.markdown("<div style='color: var(--text-secondary); margin-bottom: 16px; font-weight: 500;'>Dokumen yang diunggah di sini akan dibaca oleh AI, dan secara otomatis disimpan ke Google Drive saat Anda menyimpan entri.</div>", unsafe_allow_html=True)
@@ -564,15 +577,6 @@ def view_upload(repo):
             
             st.write("")
             
-            # 2. BACA SAKLAR DAN MUNCULKAN PESAN (Tepat di atas tombol Save)
-            if st.session_state.save_success:
-                st.markdown(
-                    "<div style='background-color: var(--sem-green-bg); border-left: 4px solid var(--sem-green-text); padding: 16px 20px; border-radius: 12px; margin-bottom: 24px;'><div style='font-weight: 700; color: var(--sem-green-text); font-size: 16px;'>✅ Entry Berhasil Disimpan!</div><div style='color: var(--text-primary); font-size: 14px; margin-top: 4px;'>Dokumen telah masuk ke database dan form telah dikosongkan untuk entri baru.</div></div>", 
-                    unsafe_allow_html=True
-                )
-                # Matikan saklar lagi agar notifikasi hilang di input selanjutnya
-                st.session_state.save_success = False
-
             if st.form_submit_button("Save Entry"):
                 if title and summary:
                     auto_gdrive_link = ""
