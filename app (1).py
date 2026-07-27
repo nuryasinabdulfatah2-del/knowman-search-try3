@@ -404,12 +404,23 @@ def view_browse(repo):
 def view_upload(repo):
     st.markdown("<div class='section-title'>New Knowledge Entry</div>", unsafe_allow_html=True)
     
+    # 1. INISIALISASI SAKLAR NOTIFIKASI
+    if 'save_success' not in st.session_state:
+        st.session_state.save_success = False
+        
     if 'ai_summary' not in st.session_state: st.session_state.ai_summary = ""
     if 'ai_root' not in st.session_state: st.session_state.ai_root = ""
     if 'ai_rec' not in st.session_state: st.session_state.ai_rec = ""
     if 'uploaded_file_bytes' not in st.session_state: st.session_state.uploaded_file_bytes = None
     if 'uploaded_filename' not in st.session_state: st.session_state.uploaded_filename = ""
     
+    # 2. MUNCULKAN NOTIFIKASI JIKA SAKLAR MENYALA
+    # (Diletakkan di atas agar tidak hilang saat direfresh)
+    if st.session_state.save_success:
+        st.success("✅ HORE! Dokumen berhasil disimpan ke Database! Form di bawah telah otomatis dikosongkan.")
+        st.toast("Data Tersimpan!", icon="✅")
+        st.session_state.save_success = False # Matikan saklar agar hilang di input selanjutnya
+        
     with st.container(border=True):
         st.markdown("<div class='card-title' style='font-size: 20px; margin-bottom: 16px;'>AI Document Parsing & Auto-Upload</div>", unsafe_allow_html=True)
         uploaded_file = st.file_uploader("Format: PDF, DOCX, TXT", type=["pdf", "txt", "docx"], label_visibility="collapsed")
@@ -427,13 +438,12 @@ def view_upload(repo):
                     st.session_state.ai_root = ai_result["root_cause"]
                     st.session_state.ai_rec = ai_result["recommendation"]
                     st.toast("AI berhasil mengekstrak dokumen!", icon="🤖")
-                    st.rerun() # Refresh agar draf muncul
+                    st.rerun() 
                 else:
                     st.error("Could not extract text from document.")
     st.write("")
     
     with st.container(border=True):
-        # MENGGUNAKAN CLEAR ON SUBMIT AGAR FORM OTOMATIS KOSONG
         with st.form("entry_form", border=False, clear_on_submit=True):
             title = st.text_input("Title", placeholder="Entry Title")
             c1, c2 = st.columns(2)
@@ -469,19 +479,19 @@ def view_upload(repo):
                         "gdrive_link": auto_gdrive_link, "division": division
                     }
                     
-                    # PROSES PENYIMPANAN DAN CEK ERROR
                     if repo.insert(data):
-                        # JIKA SUKSES: Munculkan Notifikasi dan Hapus Memori AI
-                        st.success("✅ HORE! Dokumen berhasil disimpan ke Database! Form di atas telah otomatis dikosongkan.")
-                        st.toast("Data Tersimpan!", icon="✅")
+                        # 3. BERSIHKAN SEMUA MEMORI DRAFT
                         st.session_state.ai_summary = ""
                         st.session_state.ai_root = ""
                         st.session_state.ai_rec = ""
                         st.session_state.uploaded_file_bytes = None
                         st.session_state.uploaded_filename = ""
+                        
+                        # 4. NYALAKAN SAKLAR & PAKSA REFRESH HALAMAN
+                        st.session_state.save_success = True
+                        st.rerun()
                     else:
-                        # JIKA GAGAL: Munculkan peringatan error merah
-                        st.error("❌ DATABASE ERROR: Data GAGAL disimpan. Struktur SQLite Anda (km_enterprise.db) bermasalah. Solusi tercepat: Buka VS Code/folder aplikasi Anda, HAPUS file 'km_enterprise.db', lalu Refresh halaman ini agar sistem membuat database yang baru.")
+                        st.error("❌ DATABASE ERROR: Data GAGAL disimpan. Hapus file 'km_enterprise.db' dan coba lagi.")
                 else:
                     st.error("Title dan Summary wajib diisi!")
 
