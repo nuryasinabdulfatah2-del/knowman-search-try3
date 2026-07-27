@@ -3,7 +3,7 @@
 PT Bukit Asam Knowledge Management System
 Design System: Clean Bento Box + Semantic Soft Colors
 Typography: Caveat (Handwritten Headers) + Inter (Clean Body)
-Architecture: Object-Oriented, Cached Repository, Feedback Loop, AI Revise Parsing
+Architecture: Object-Oriented, Cached Repository, Feedback Loop, AI Revise Parsing, Google Drive Integration
 """
 
 import streamlit as st
@@ -70,7 +70,7 @@ def create_apple_theme():
     pio.templates.default = "apple_enterprise"
 
 # ==============================================================================
-# 3. DATA REPOSITORY (OOP) WITH REVISION SUPPORT
+# 3. DATA REPOSITORY (OOP) WITH GDRIVE SUPPORT
 # ==============================================================================
 class KnowledgeRepository:
     def __init__(self, db_path):
@@ -108,6 +108,11 @@ class KnowledgeRepository:
                 cur.execute("ALTER TABLE knowledge ADD COLUMN reviewer_notes TEXT DEFAULT ''")
             except Exception:
                 pass
+        if 'gdrive_link' not in columns:
+            try:
+                cur.execute("ALTER TABLE knowledge ADD COLUMN gdrive_link TEXT DEFAULT ''")
+            except Exception:
+                pass
                 
         conn.commit()
         conn.close()
@@ -123,12 +128,12 @@ class KnowledgeRepository:
             conn = self.get_connection()
             cur = conn.cursor()
             cur.execute("""
-                INSERT INTO knowledge (title, project, category, impact, status, summary, root_cause, recommendation, uploader, upload_date, reviewer_notes)
-                VALUES (?, ?, ?, ?, 'Pending Review', ?, ?, ?, ?, ?, '')
+                INSERT INTO knowledge (title, project, category, impact, status, summary, root_cause, recommendation, uploader, upload_date, reviewer_notes, gdrive_link)
+                VALUES (?, ?, ?, ?, 'Pending Review', ?, ?, ?, ?, ?, '', ?)
             """, (
                 data['title'], data['project'], data['category'], data['impact'], 
                 data['summary'], data['root_cause'], data['recommendation'], 
-                data['uploader'], datetime.now().strftime("%d %B %Y")
+                data['uploader'], datetime.now().strftime("%d %B %Y"), data.get('gdrive_link', '')
             ))
             conn.commit()
             conn.close()
@@ -153,11 +158,11 @@ class KnowledgeRepository:
             cur = conn.cursor()
             cur.execute("""
                 UPDATE knowledge 
-                SET title = ?, project = ?, category = ?, impact = ?, summary = ?, root_cause = ?, recommendation = ?, status = 'Pending Review'
+                SET title = ?, project = ?, category = ?, impact = ?, summary = ?, root_cause = ?, recommendation = ?, gdrive_link = ?, status = 'Pending Review'
                 WHERE id = ?
             """, (
                 data['title'], data['project'], data['category'], data['impact'], 
-                data['summary'], data['root_cause'], data['recommendation'], record_id
+                data['summary'], data['root_cause'], data['recommendation'], data.get('gdrive_link', ''), record_id
             ))
             conn.commit()
             conn.close()
@@ -177,7 +182,7 @@ class KnowledgeRepository:
             return False
 
 @st.cache_resource
-def get_repository_3():
+def get_repository_5():
     return KnowledgeRepository(DB_PATH)
 
 # ==============================================================================
@@ -363,6 +368,29 @@ def inject_enterprise_css():
     
     .badge-category { background-color: var(--sem-grey-bg); color: var(--sem-grey-text); border: 1px solid rgba(122, 141, 153, 0.2); }
     
+    /* GDrive Button Styling */
+    .gdrive-link-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background-color: rgba(107, 163, 206, 0.12);
+        color: var(--accent-blue) !important;
+        padding: 8px 18px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 13.5px;
+        text-decoration: none !important;
+        margin-top: 16px;
+        transition: all 0.2s ease;
+        font-family: 'Inter', sans-serif !important;
+        border: 1px solid rgba(107, 163, 206, 0.25);
+    }
+    .gdrive-link-btn:hover {
+        background-color: var(--accent-blue);
+        color: var(--surface) !important;
+        transform: translateY(-2px);
+    }
+    
     /* HTML Details/Summary Expandable Toggle */
     .custom-details { margin-top: 20px; }
     .custom-summary {
@@ -505,6 +533,10 @@ def render_knowledge_card(row, compact=True):
     rc_txt = str(row['root_cause']).replace('\n', '<br>')
     rec_txt = str(row['recommendation']).replace('\n', '<br>')
     
+    # Menyiapkan elemen tombol Google Drive jika ada
+    gdrive_link = row['gdrive_link'] if 'gdrive_link' in row.keys() and row['gdrive_link'] else ""
+    gdrive_html = f"""<div style="margin-top: 16px;"><a href="{gdrive_link}" target="_blank" class="gdrive-link-btn">📂 Open Google Drive Document</a></div>""" if gdrive_link else ""
+    
     if compact:
         is_long = len(str(row['summary'])) > 150
         short_summary = (str(row['summary'])[:150] + "...").replace('\n', '<br>') if is_long else sum_txt
@@ -512,13 +544,14 @@ def render_knowledge_card(row, compact=True):
         card_html = f"""<div class="bento">
 <div class="card-title">{row['title']}</div>
 <div class="card-meta">{row['project']} &nbsp;|&nbsp; {row['upload_date']}</div>
-<div style="margin-bottom: 32px;">
+<div style="margin-bottom: 24px;">
 <span class="badge badge-status-{status_str}">{row['status']}</span>
 <span class="badge badge-impact-{impact_str}">{row['impact']} Impact</span>
 <span class="badge badge-category">{row['category']}</span>
 </div>
 <div class="card-section">Summary (Preview)</div>
 <div class="card-body">{short_summary}</div>
+{gdrive_html}
 <details class="custom-details">
 <summary class="custom-summary">Show Full Details</summary>
 <div class="details-content">
@@ -535,7 +568,7 @@ def render_knowledge_card(row, compact=True):
         card_html = f"""<div class="bento">
 <div class="card-title">{row['title']}</div>
 <div class="card-meta">{row['project']} &nbsp;|&nbsp; {row['upload_date']}</div>
-<div style="margin-bottom: 32px;">
+<div style="margin-bottom: 24px;">
 <span class="badge badge-status-{status_str}">{row['status']}</span>
 <span class="badge badge-impact-{impact_str}">{row['impact']} Impact</span>
 <span class="badge badge-category">{row['category']}</span>
@@ -546,6 +579,7 @@ def render_knowledge_card(row, compact=True):
 <div class="card-body">{rc_txt}</div>
 <div class="card-section">Recommendation</div>
 <div class="card-body" style="font-weight: 600;">{rec_txt}</div>
+{gdrive_html}
 </div>"""
         
     st.markdown(card_html, unsafe_allow_html=True)
@@ -652,6 +686,9 @@ def view_upload(repo):
             with c2:
                 uploader = st.text_input("Uploader", placeholder="Your Name")
                 impact = st.selectbox("Impact", IMPACT_LEVELS)
+            
+            # Kolom Tambahan Google Drive Link
+            gdrive_link = st.text_input("Google Drive Link (Optional)", placeholder="https://drive.google.com/file/d/...")
                 
             summary = st.text_area("Summary", value=st.session_state.ai_summary, placeholder="Brief description...", height=120)
             root_cause = st.text_area("Root Cause", value=st.session_state.ai_root, placeholder="Underlying issue...", height=120)
@@ -663,7 +700,8 @@ def view_upload(repo):
                     data = {
                         "title": title, "project": project, "category": category,
                         "impact": impact, "summary": summary, "root_cause": root_cause,
-                        "recommendation": recommendation, "uploader": uploader
+                        "recommendation": recommendation, "uploader": uploader,
+                        "gdrive_link": gdrive_link
                     }
                     if repo.insert(data):
                         st.session_state.ai_summary = ""
@@ -727,6 +765,9 @@ def view_revision(repo):
                     imp_idx = IMPACT_LEVELS.index(row['impact']) if row['impact'] in IMPACT_LEVELS else 0
                     impact = st.selectbox("Impact", IMPACT_LEVELS, index=imp_idx)
                     
+                gdrive_val = row['gdrive_link'] if 'gdrive_link' in row.keys() and row['gdrive_link'] else ""
+                gdrive_link = st.text_input("Google Drive Link (Optional)", value=gdrive_val)
+                    
                 summary = st.text_area("Summary", value=st.session_state[f'rev_sum_{rid}'], height=120)
                 root_cause = st.text_area("Root Cause", value=st.session_state[f'rev_root_{rid}'], height=120)
                 recommendation = st.text_area("Recommendation", value=st.session_state[f'rev_rec_{rid}'], height=120)
@@ -736,7 +777,7 @@ def view_revision(repo):
                     data = {
                         'title': title, 'project': project, 'category': category,
                         'impact': impact, 'summary': summary, 'root_cause': root_cause,
-                        'recommendation': recommendation
+                        'recommendation': recommendation, 'gdrive_link': gdrive_link
                     }
                     if repo.resubmit_record(rid, data):
                         if f'rev_sum_{rid}' in st.session_state: del st.session_state[f'rev_sum_{rid}']
@@ -763,7 +804,6 @@ def view_approval(repo):
         with st.container(border=True):
             notes = st.text_area("PMO Feedback (Required if returning for revision)", placeholder="Write your feedback to the uploader here...", key=f"note_{row['id']}")
             
-            # Kolom diubah menjadi 4 untuk menampung tombol Delete
             c1, c2, c3, c4 = st.columns(4)
             with c1:
                 if st.button("Delete", key=f"del_{row['id']}"):
@@ -825,7 +865,7 @@ def main():
     create_apple_theme()
     inject_enterprise_css()
     
-    repo = get_repository_3()
+    repo = get_repository_5()
 
     with st.sidebar:
         st.markdown("<div style='font-size: 14px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 24px; padding-left: 10px; font-family: \"Inter\", sans-serif;'>PT Bukit Asam KM</div>", unsafe_allow_html=True)
@@ -836,7 +876,7 @@ def main():
             label_visibility="collapsed"
         )
         
-        st.markdown("<div style='margin-top: 60px; padding-left: 10px; font-size: 12px; font-weight: 600; color: var(--text-secondary); font-family: \"Inter\", sans-serif;'>Repository<br>Version 1.2</div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top: 60px; padding-left: 10px; font-size: 12px; font-weight: 600; color: var(--text-secondary); font-family: \"Inter\", sans-serif;'>Repository<br>Version 1.3</div>", unsafe_allow_html=True)
 
     if navigation == "Dashboard":
         view_dashboard(repo)
