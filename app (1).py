@@ -218,64 +218,49 @@ def parse_document(file_bytes, filename) -> str:
     return ""
 
 def extract_knowledge(text: str) -> dict:
-    """Menganalisis teks menggunakan Google Gemini AI dengan Diagnostik Secrets"""
+    """Menganalisis teks menggunakan Google Gemini AI via st.secrets"""
     res = {"summary": "", "root_cause": "", "recommendation": ""}
     if not text: return res
 
-    if GEMINI_AVAILABLE:
-        # Coba cari kunci dengan berbagai cara yang aman
-        api_key = None
+    # Menggunakan API Key dari st.secrets yang sudah diperbaiki formatnya
+    if GEMINI_AVAILABLE and "GEMINI_API_KEY" in st.secrets:
         try:
-            if "GEMINI_API_KEY" in st.secrets:
-                api_key = st.secrets["GEMINI_API_KEY"]
-            elif "gemini_api_key" in st.secrets:
-                api_key = st.secrets["gemini_api_key"]
-        except Exception:
-            pass
+            genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            
+            prompt = f"""
+            Anda adalah analis Knowledge Management profesional.
+            Baca teks ini dan rangkum menjadi 3 poin penting.
+            
+            WAJIB balas HANYA dengan format JSON persis seperti ini tanpa tambahan teks apapun di awal atau akhir:
+            {{
+                "summary": "Tuliskan ringkasan masalah utama di sini...",
+                "root_cause": "Tuliskan akar penyebab terjadinya masalah di sini...",
+                "recommendation": "Tuliskan rekomendasi atau solusi yang diajukan di sini..."
+            }}
 
-        if api_key:
-            try:
-                genai.configure(api_key=api_key)
-                model = genai.GenerativeModel('gemini-1.5-flash')
-                
-                prompt = f"""
-                Anda adalah analis Knowledge Management profesional.
-                Baca teks ini dan rangkum menjadi 3 poin penting.
-                
-                WAJIB balas HANYA dengan format JSON persis seperti ini tanpa tambahan teks apapun di awal atau akhir:
-                {{
-                    "summary": "Tuliskan ringkasan masalah utama di sini...",
-                    "root_cause": "Tuliskan akar penyebab terjadinya masalah di sini...",
-                    "recommendation": "Tuliskan rekomendasi atau solusi yang diajukan di sini..."
-                }}
-
-                TEKS DOKUMEN:
-                {text[:15000]} 
-                """
-                response = model.generate_content(prompt)
-                
-                clean_text = response.text.strip()
-                if clean_text.startswith("```json"): clean_text = clean_text[7:]
-                elif clean_text.startswith("```"): clean_text = clean_text[3:]
-                if clean_text.endswith("```"): clean_text = clean_text[:-3]
-                clean_text = clean_text.strip()
-                
-                ai_data = json.loads(clean_text)
-                
-                res["summary"] = ai_data.get("summary", "")
-                res["root_cause"] = ai_data.get("root_cause", "")
-                res["recommendation"] = ai_data.get("recommendation", "")
-                return res
-                
-            except Exception as e:
-                st.error(f"❌ GEMINI GAGAL: {e}")
-                return res
-        else:
-            # 🔍 KODE DIAGNOSTIK: Menampilkan daftar kunci yang terbaca oleh Streamlit
-            detected_keys = list(st.secrets.keys()) if hasattr(st.secrets, "keys") else "Tidak terbaca"
-            st.warning(f"⚠️ GEMINI_API_KEY tidak ditemukan. Daftar key yang terbaca oleh Streamlit saat ini: {detected_keys}")
-
-    # Metode Fallback (Keyword Sederhana)
+            TEKS DOKUMEN:
+            {text[:15000]} 
+            """
+            response = model.generate_content(prompt)
+            
+            clean_text = response.text.string if hasattr(response, 'string') else response.text.strip()
+            if clean_text.startswith("```json"): clean_text = clean_text[7:]
+            elif clean_text.startswith("```"): clean_text = clean_text[3:]
+            if clean_text.endswith("```"): clean_text = clean_text[:-3]
+            clean_text = clean_text.strip()
+            
+            ai_data = json.loads(clean_text)
+            
+            res["summary"] = ai_data.get("summary", "")
+            res["root_cause"] = ai_data.get("root_cause", "")
+            res["recommendation"] = ai_data.get("recommendation", "")
+            return res
+            
+        except Exception as e:
+            st.error(f"❌ GEMINI GAGAL: {e}")
+            
+    # Metode Fallback (Keyword Sederhana jika API Key tidak aktif)
     sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if len(s) > 15]
     def extract_by_keywords(kw_list):
         matched = [s for s in sentences if any(kw in s.lower() for kw in kw_list)]
