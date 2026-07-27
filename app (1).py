@@ -512,6 +512,10 @@ def view_browse(repo):
 def view_upload(repo):
     st.markdown("<div class='section-title'>New Knowledge Entry</div>", unsafe_allow_html=True)
     
+    # 1. INISIALISASI "SAKLAR" NOTIFIKASI
+    if 'save_success' not in st.session_state: 
+        st.session_state.save_success = False
+        
     if 'ai_summary' not in st.session_state: st.session_state.ai_summary = ""
     if 'ai_root' not in st.session_state: st.session_state.ai_root = ""
     if 'ai_rec' not in st.session_state: st.session_state.ai_rec = ""
@@ -537,14 +541,13 @@ def view_upload(repo):
                     st.session_state.ai_summary = ai_result["summary"]
                     st.session_state.ai_root = ai_result["root_cause"]
                     st.session_state.ai_rec = ai_result["recommendation"]
-                    st.toast("AI berhasil membaca dokumen!", icon="🤖")
+                    st.toast("AI berhasil mengekstrak dokumen!", icon="🤖")
                 else:
                     st.error("Could not extract text from document.")
     st.write("")
     
     with st.container(border=True):
-        # 1. KUNCI UTAMA: Tambahkan clear_on_submit=True agar form otomatis dikosongkan
-        with st.form("entry_form", border=False, clear_on_submit=True):
+        with st.form("entry_form", border=False):
             title = st.text_input("Title", placeholder="Entry Title")
             
             c1, c2 = st.columns(2)
@@ -561,9 +564,15 @@ def view_upload(repo):
             
             st.write("")
             
-            # 2. PENAMPUNG NOTIFIKASI: Diletakkan tepat di atas tombol agar langsung terlihat oleh mata
-            notif_placeholder = st.empty()
-            
+            # 2. BACA SAKLAR DAN MUNCULKAN PESAN (Tepat di atas tombol Save)
+            if st.session_state.save_success:
+                st.markdown(
+                    "<div style='background-color: var(--sem-green-bg); border-left: 4px solid var(--sem-green-text); padding: 16px 20px; border-radius: 12px; margin-bottom: 24px;'><div style='font-weight: 700; color: var(--sem-green-text); font-size: 16px;'>✅ Entry Berhasil Disimpan!</div><div style='color: var(--text-primary); font-size: 14px; margin-top: 4px;'>Dokumen telah masuk ke database dan form telah dikosongkan untuk entri baru.</div></div>", 
+                    unsafe_allow_html=True
+                )
+                # Matikan saklar lagi agar notifikasi hilang di input selanjutnya
+                st.session_state.save_success = False
+
             if st.form_submit_button("Save Entry"):
                 if title and summary:
                     auto_gdrive_link = ""
@@ -591,13 +600,9 @@ def view_upload(repo):
                         st.session_state.uploaded_file_bytes = None
                         st.session_state.uploaded_filename = ""
                         
-                        # 3. MUNCULKAN PEMBERITAHUAN (Tanpa st.rerun agar pesan bertahan di layar)
-                        notif_placeholder.markdown(
-                            f"<div style='background-color: var(--sem-green-bg); border-left: 4px solid var(--sem-green-text); padding: 16px 20px; border-radius: 12px; margin-bottom: 24px;'><div style='font-weight: 700; color: var(--sem-green-text); font-size: 16px;'>✅ Entry Berhasil Disimpan!</div><div style='color: var(--text-primary); font-size: 14px; margin-top: 4px;'>Dokumen '{title}' telah masuk ke database. Kolom form di bawahnya telah dikosongkan kembali untuk entri berikutnya.</div></div>", 
-                            unsafe_allow_html=True
-                        )
-                        # Tambahan notifikasi melayang (Toast) di pojok kanan bawah
-                        st.toast(f"Tersimpan: {title}", icon="✅")
+                        # 3. NYALAKAN SAKLAR & PAKSA REFRESH
+                        st.session_state.save_success = True
+                        st.rerun()
                 else:
                     st.error("Title and Summary are required.")
 
