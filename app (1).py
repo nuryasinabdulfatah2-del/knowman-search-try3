@@ -512,11 +512,6 @@ def view_browse(repo):
 def view_upload(repo):
     st.markdown("<div class='section-title'>New Knowledge Entry</div>", unsafe_allow_html=True)
     
-    # 1. LOGIKA BARU: Menampilkan notifikasi persisten setelah form sukses di-save
-    if st.session_state.get('show_success_notif'):
-        render_notification("✅ Entry telah di-save!")
-        st.session_state.show_success_notif = False
-    
     if 'ai_summary' not in st.session_state: st.session_state.ai_summary = ""
     if 'ai_root' not in st.session_state: st.session_state.ai_root = ""
     if 'ai_rec' not in st.session_state: st.session_state.ai_rec = ""
@@ -542,14 +537,14 @@ def view_upload(repo):
                     st.session_state.ai_summary = ai_result["summary"]
                     st.session_state.ai_root = ai_result["root_cause"]
                     st.session_state.ai_rec = ai_result["recommendation"]
-                    # Menggunakan Toast agar lebih interaktif
-                    st.toast("AI berhasil mengekstrak dokumen!", icon="🤖")
+                    st.toast("AI berhasil membaca dokumen!", icon="🤖")
                 else:
                     st.error("Could not extract text from document.")
     st.write("")
     
     with st.container(border=True):
-        with st.form("entry_form", border=False):
+        # 1. KUNCI UTAMA: Tambahkan clear_on_submit=True agar form otomatis dikosongkan
+        with st.form("entry_form", border=False, clear_on_submit=True):
             title = st.text_input("Title", placeholder="Entry Title")
             
             c1, c2 = st.columns(2)
@@ -565,6 +560,10 @@ def view_upload(repo):
             recommendation = st.text_area("Recommendation", value=st.session_state.ai_rec, placeholder="Action plan...", height=120)
             
             st.write("")
+            
+            # 2. PENAMPUNG NOTIFIKASI: Diletakkan tepat di atas tombol agar langsung terlihat oleh mata
+            notif_placeholder = st.empty()
+            
             if st.form_submit_button("Save Entry"):
                 if title and summary:
                     auto_gdrive_link = ""
@@ -592,9 +591,13 @@ def view_upload(repo):
                         st.session_state.uploaded_file_bytes = None
                         st.session_state.uploaded_filename = ""
                         
-                        # 2. LOGIKA BARU: Simpan status ke memori lalu paksa aplikasi untuk memuat ulang formulir (refresh)
-                        st.session_state.show_success_notif = True
-                        st.rerun()
+                        # 3. MUNCULKAN PEMBERITAHUAN (Tanpa st.rerun agar pesan bertahan di layar)
+                        notif_placeholder.markdown(
+                            f"<div style='background-color: var(--sem-green-bg); border-left: 4px solid var(--sem-green-text); padding: 16px 20px; border-radius: 12px; margin-bottom: 24px;'><div style='font-weight: 700; color: var(--sem-green-text); font-size: 16px;'>✅ Entry Berhasil Disimpan!</div><div style='color: var(--text-primary); font-size: 14px; margin-top: 4px;'>Dokumen '{title}' telah masuk ke database. Kolom form di bawahnya telah dikosongkan kembali untuk entri berikutnya.</div></div>", 
+                            unsafe_allow_html=True
+                        )
+                        # Tambahan notifikasi melayang (Toast) di pojok kanan bawah
+                        st.toast(f"Tersimpan: {title}", icon="✅")
                 else:
                     st.error("Title and Summary are required.")
 
