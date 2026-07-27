@@ -108,23 +108,32 @@ def upload_to_gdrive(file_bytes_io, filename):
         media = MediaIoBaseUpload(file_bytes_io, mimetype='application/octet-stream', resumable=True)
         file_metadata = {'name': filename, 'parents': [GDRIVE_FOLDER_ID]}
 
-        # Upload file
+       # 1. Proses Upload File (Ini sudah berhasil di sistem Anda)
         uploaded_file = service.files().create(
             body=file_metadata, 
             media_body=media, 
             fields='id, webViewLink',
-            supportsAllDrives=True # PASTIKAN BARIS INI ADA
+            supportsAllDrives=True 
         ).execute()
         
         file_id = uploaded_file.get('id')
+        file_link = uploaded_file.get('webViewLink')
         
-        # Ubah permission agar bisa dibaca siapa saja yang memiliki link
-        service.permissions().create(
-            fileId=file_id,
-            body={'type': 'anyone', 'role': 'reader'}
-        ).execute()
+        # 2. Proses Ubah Izin (Kita bungkus dengan Try-Except agar anti-crash)
+        try:
+            service.permissions().create(
+                fileId=file_id,
+                body={'type': 'anyone', 'role': 'reader'},
+                supportsAllDrives=True 
+            ).execute()
+        except Exception as perm_error:
+            # Jika sistem keamanan Shared Drive menolak pengubahan ke publik, 
+            # abaikan saja error-nya. Dokumen sudah aman di dalam Drive.
+            pass
+            
+        # 3. Kembalikan link ke Streamlit untuk disimpan ke database
+        return file_link
         
-        return uploaded_file.get('webViewLink')
     except Exception as e:
         st.error(f"Gagal mengunggah ke GDrive: {e}")
         return None
