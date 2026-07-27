@@ -52,7 +52,7 @@ DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "km_enterpris
 
 # ⚠️ KONFIGURASI GOOGLE DRIVE (Ganti dengan data Anda nanti)
 GDRIVE_CREDENTIALS_FILE = "gdrive_credentials.json" 
-GDRIVE_FOLDER_ID = "1Pdkc9LD7XFkFhioznFWIZozp8lyqb_q-?hl=ID" 
+GDRIVE_FOLDER_ID = "1Pdkc9LD7XFkFhioznFWIZozp8lyqb_q-" 
 
 IMPACT_LEVELS = ["High", "Medium", "Low"]
 CATEGORY_OPTIONS = [
