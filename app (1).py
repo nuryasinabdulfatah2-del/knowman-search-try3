@@ -50,26 +50,19 @@ except ImportError:
 # ==============================================================================
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "km_enterprise.db")
 
-# KONFIGURASI GOOGLE DRIVE
 GDRIVE_CREDENTIALS_FILE = "gdrive_credentials.json" 
 
 # ⚠️ KAMUS FOLDER GDRIVE (DYNAMIC ROUTING)
-# Masukkan ID Folder masing-masing divisi di Google Drive Anda:
 DIVISION_FOLDERS = {
     "Divisi Perencanaan & Keuangan": "1kVAq06Jep0dLL-dTOpDLqtxR3iugcB4F",
     "Divisi Operasional & Produksi": "1w7nie08G8ZlXpLJzMV9V-7MytF2LIWr9",
     "Divisi Teknologi Informasi": "1-bPwqpCeY4yRtdGpzfZ4UmjmQKSTk7AV",
     "Divisi SDM & Umum": "14Q949Rt_UNyEKYenuneBZXlgzznUMOnY",
-    "Lainnya": "1Pdkc9LD7XFkFhioznFWIZozp8lyqb_q-" # Menggunakan folder lama Anda yang sudah berhasil sebagai default
+    "Lainnya": "1Pdkc9LD7XFkFhioznFWIZozp8lyqb_q-" 
 }
 DIVISION_OPTIONS = list(DIVISION_FOLDERS.keys())
 
 IMPACT_LEVELS = ["High", "Medium", "Low"]
-CATEGORY_OPTIONS = [
-    "Project Planning", "Financial & Budget", "Risk Management", 
-    "Procurement", "Quality Assurance", "Technology & Systems", 
-    "Operations", "Other"
-]
 
 KEYWORDS_SUMMARY = ["isu", "masalah", "kendala", "permasalahan", "issue", "problem", "hambatan", "deviation"]
 KEYWORDS_ROOT_CAUSE = ["akar masalah", "akar penyebab", "disebabkan", "root cause", "sumber masalah", "due to", "caused by"]
@@ -92,7 +85,6 @@ def create_apple_theme():
 # 3. GOOGLE DRIVE UPLOADER ENGINE
 # ==============================================================================
 def upload_to_gdrive(file_bytes_io, filename, target_folder_id):
-    """Mengunggah file ke Google Drive dan mengembalikan URL yang bisa dibaca publik"""
     if not GDRIVE_AVAILABLE:
         return None
         
@@ -100,12 +92,10 @@ def upload_to_gdrive(file_bytes_io, filename, target_folder_id):
         scopes = ['https://www.googleapis.com/auth/drive.file']
         creds = None
         
-        # 1. Cek apakah berjalan di Streamlit Cloud (membaca dari st.secrets)
         if "gcp_service_account" in st.secrets:
             creds = service_account.Credentials.from_service_account_info(
                 st.secrets["gcp_service_account"], scopes=scopes
             )
-        # 2. Fallback ke file lokal jika berjalan di komputer sendiri
         elif os.path.exists(GDRIVE_CREDENTIALS_FILE):
             creds = service_account.Credentials.from_service_account_file(
                 GDRIVE_CREDENTIALS_FILE, scopes=scopes
@@ -117,10 +107,8 @@ def upload_to_gdrive(file_bytes_io, filename, target_folder_id):
         file_bytes_io.seek(0)
         media = MediaIoBaseUpload(file_bytes_io, mimetype='application/octet-stream', resumable=True)
         
-        # MENGGUNAKAN TARGET FOLDER ID BERDASARKAN DIVISI
         file_metadata = {'name': filename, 'parents': [target_folder_id]}
 
-       # 1. Proses Upload File 
         uploaded_file = service.files().create(
             body=file_metadata, 
             media_body=media, 
@@ -131,7 +119,6 @@ def upload_to_gdrive(file_bytes_io, filename, target_folder_id):
         file_id = uploaded_file.get('id')
         file_link = uploaded_file.get('webViewLink')
         
-        # 2. Proses Ubah Izin (Kita bungkus dengan Try-Except agar anti-crash)
         try:
             service.permissions().create(
                 fileId=file_id,
@@ -141,7 +128,6 @@ def upload_to_gdrive(file_bytes_io, filename, target_folder_id):
         except Exception as perm_error:
             pass
             
-        # 3. Kembalikan link ke Streamlit untuk disimpan ke database
         return file_link
         
     except Exception as e:
@@ -188,7 +174,6 @@ class KnowledgeRepository:
         if 'gdrive_link' not in columns:
             try: cur.execute("ALTER TABLE knowledge ADD COLUMN gdrive_link TEXT DEFAULT ''")
             except Exception: pass
-        # Tambahan Kolom Divisi
         if 'division' not in columns:
             try: cur.execute("ALTER TABLE knowledge ADD COLUMN division TEXT DEFAULT 'Lainnya'")
             except Exception: pass
@@ -206,11 +191,12 @@ class KnowledgeRepository:
         try:
             conn = self.get_connection()
             cur = conn.cursor()
+            # Menyimpan data divisi ke kolom category juga agar database lama tidak error
             cur.execute("""
                 INSERT INTO knowledge (title, project, category, impact, status, summary, root_cause, recommendation, uploader, upload_date, reviewer_notes, gdrive_link, division)
                 VALUES (?, ?, ?, ?, 'Pending Review', ?, ?, ?, ?, ?, '', ?, ?)
             """, (
-                data['title'], data['project'], data['category'], data['impact'], 
+                data['title'], data['project'], data['division'], data['impact'], 
                 data['summary'], data['root_cause'], data['recommendation'], 
                 data['uploader'], datetime.now().strftime("%d %B %Y"), data.get('gdrive_link', ''), data.get('division', 'Lainnya')
             ))
@@ -240,7 +226,7 @@ class KnowledgeRepository:
                 SET title = ?, project = ?, category = ?, impact = ?, summary = ?, root_cause = ?, recommendation = ?, gdrive_link = ?, division = ?, status = 'Pending Review'
                 WHERE id = ?
             """, (
-                data['title'], data['project'], data['category'], data['impact'], 
+                data['title'], data['project'], data['division'], data['impact'], 
                 data['summary'], data['root_cause'], data['recommendation'], data.get('gdrive_link', ''), data.get('division', 'Lainnya'), record_id
             ))
             conn.commit()
@@ -361,7 +347,6 @@ def inject_enterprise_css():
     .badge-impact-High { background-color: var(--sem-red-bg); color: var(--sem-red-text); }
     .badge-impact-Medium { background-color: var(--sem-yellow-bg); color: var(--sem-yellow-text); }
     .badge-impact-Low { background-color: var(--sem-grey-bg); color: var(--sem-grey-text); }
-    .badge-category { background-color: var(--sem-grey-bg); color: var(--sem-grey-text); border: 1px solid rgba(122, 141, 153, 0.2); }
     .badge-division { background-color: var(--sem-purple-bg); color: var(--sem-purple-text); border: 1px solid rgba(147, 112, 219, 0.2); }
     .gdrive-link-btn { display: inline-flex; align-items: center; gap: 8px; background-color: rgba(107, 163, 206, 0.12); color: var(--accent-blue) !important; padding: 8px 18px; border-radius: 12px; font-weight: 700; font-size: 13.5px; text-decoration: none !important; margin-top: 16px; transition: all 0.2s ease; font-family: 'Inter', sans-serif !important; border: 1px solid rgba(107, 163, 206, 0.25); }
     .gdrive-link-btn:hover { background-color: var(--accent-blue); color: var(--surface) !important; transform: translateY(-2px); }
@@ -424,7 +409,6 @@ def render_knowledge_card(row, compact=True):
 <span class="badge badge-status-{status_str}">{row['status']}</span>
 <span class="badge badge-impact-{impact_str}">{row['impact']} Impact</span>
 {div_badge}
-<span class="badge badge-category">{row['category']}</span>
 </div>
 <div class="card-section">Summary (Preview)</div>
 <div class="card-body">{short_summary}</div>
@@ -449,7 +433,6 @@ def render_knowledge_card(row, compact=True):
 <span class="badge badge-status-{status_str}">{row['status']}</span>
 <span class="badge badge-impact-{impact_str}">{row['impact']} Impact</span>
 {div_badge}
-<span class="badge badge-category">{row['category']}</span>
 </div>
 <div class="card-section">Summary</div>
 <div class="card-body">{sum_txt}</div>
@@ -562,15 +545,14 @@ def view_upload(repo):
     with st.container(border=True):
         with st.form("entry_form", border=False):
             title = st.text_input("Title", placeholder="Entry Title")
-            c1, c2, c3 = st.columns([1, 1, 1])
+            
+            # Form diperbarui menjadi 2 kolom agar lebih proporsional setelah Category dihapus
+            c1, c2 = st.columns(2)
             with c1:
                 project = st.text_input("Project", placeholder="Project Name")
-                uploader = st.text_input("Uploader", placeholder="Your Name")
+                division = st.selectbox("Divisi / Kategori", DIVISION_OPTIONS)
             with c2:
-                # TAMBAHAN PILIHAN DIVISI
-                division = st.selectbox("Divisi (Tujuan Folder)", DIVISION_OPTIONS)
-                category = st.selectbox("Category", CATEGORY_OPTIONS)
-            with c3:
+                uploader = st.text_input("Uploader", placeholder="Your Name")
                 impact = st.selectbox("Impact", IMPACT_LEVELS)
                 
             summary = st.text_area("Summary", value=st.session_state.ai_summary, placeholder="Brief description...", height=120)
@@ -585,7 +567,6 @@ def view_upload(repo):
                     if st.session_state.uploaded_file_bytes:
                         if GDRIVE_AVAILABLE and ("gcp_service_account" in st.secrets or os.path.exists(GDRIVE_CREDENTIALS_FILE)):
                             with st.spinner("Mengunggah dokumen asli ke Google Drive..."):
-                                # MENGAMBIL FOLDER ID BERDASARKAN DIVISI YANG DIPILIH
                                 target_folder_id = DIVISION_FOLDERS.get(division, DIVISION_FOLDERS["Lainnya"])
                                 link = upload_to_gdrive(st.session_state.uploaded_file_bytes, st.session_state.uploaded_filename, target_folder_id)
                                 if link: auto_gdrive_link = link
@@ -593,7 +574,7 @@ def view_upload(repo):
                             st.warning("Google Drive API belum dikonfigurasi. Tautan GDrive akan dikosongkan.")
 
                     data = {
-                        "title": title, "project": project, "category": category,
+                        "title": title, "project": project,
                         "impact": impact, "summary": summary, "root_cause": root_cause,
                         "recommendation": recommendation, "uploader": uploader,
                         "gdrive_link": auto_gdrive_link, "division": division
@@ -660,15 +641,14 @@ def view_revision(repo):
             st.write("")
             with st.form(f"form_rev_{rid}", border=False):
                 title = st.text_input("Title", value=row['title'])
-                c1, c2, c3 = st.columns([1,1,1])
+                
+                # Diperbarui ke 2 kolom 
+                c1, c2 = st.columns(2)
                 with c1:
                     project = st.text_input("Project", value=row['project'])
                     div_idx = DIVISION_OPTIONS.index(row.get('division', 'Lainnya')) if row.get('division', 'Lainnya') in DIVISION_OPTIONS else len(DIVISION_OPTIONS)-1
-                    division = st.selectbox("Divisi", DIVISION_OPTIONS, index=div_idx)
+                    division = st.selectbox("Divisi / Kategori", DIVISION_OPTIONS, index=div_idx)
                 with c2:
-                    cat_idx = CATEGORY_OPTIONS.index(row['category']) if row['category'] in CATEGORY_OPTIONS else 0
-                    category = st.selectbox("Category", CATEGORY_OPTIONS, index=cat_idx)
-                with c3:
                     imp_idx = IMPACT_LEVELS.index(row['impact']) if row['impact'] in IMPACT_LEVELS else 0
                     impact = st.selectbox("Impact", IMPACT_LEVELS, index=imp_idx)
                     
@@ -687,7 +667,7 @@ def view_revision(repo):
                             if link: new_gdrive_link = link
                     
                     data = {
-                        'title': title, 'project': project, 'category': category,
+                        'title': title, 'project': project,
                         'impact': impact, 'summary': summary, 'root_cause': root_cause,
                         'recommendation': recommendation, 'gdrive_link': new_gdrive_link,
                         'division': division
@@ -769,7 +749,7 @@ def main():
     with st.sidebar:
         st.markdown("<div style='font-size: 14px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 24px; padding-left: 10px; font-family: \"Inter\", sans-serif;'>PT Bukit Asam KM</div>", unsafe_allow_html=True)
         navigation = st.radio("Nav", ["Dashboard", "Browse", "New Entry", "Revision Desk", "Approval", "Export"], label_visibility="collapsed")
-        st.markdown("<div style='margin-top: 60px; padding-left: 10px; font-size: 12px; font-weight: 600; color: var(--text-secondary); font-family: \"Inter\", sans-serif;'>Repository<br>Version 1.5</div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top: 60px; padding-left: 10px; font-size: 12px; font-weight: 600; color: var(--text-secondary); font-family: \"Inter\", sans-serif;'>Repository<br>Version 1.6</div>", unsafe_allow_html=True)
 
     if navigation == "Dashboard": view_dashboard(repo)
     elif navigation == "Browse": view_browse(repo)
