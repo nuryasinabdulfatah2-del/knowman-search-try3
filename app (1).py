@@ -3,7 +3,7 @@
 PT Bukit Asam Knowledge Management System
 Design System: Clean Bento Box + Semantic Soft Colors
 Typography: Caveat (Handwritten Headers) + Inter (Clean Body)
-Architecture: Object-Oriented, Cached Repository, Feedback Loop, AI Revise Parsing, Auto GDrive Integration
+Architecture: Object-Oriented, Cached Repository, Feedback Loop, AI Revise Parsing, Auto GDrive Integration, Dynamic Routing
 """
 
 import streamlit as st
@@ -50,9 +50,19 @@ except ImportError:
 # ==============================================================================
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "km_enterprise.db")
 
-# ⚠️ KONFIGURASI GOOGLE DRIVE (Ganti dengan data Anda nanti)
+# KONFIGURASI GOOGLE DRIVE
 GDRIVE_CREDENTIALS_FILE = "gdrive_credentials.json" 
-GDRIVE_FOLDER_ID = "1Pdkc9LD7XFkFhioznFWIZozp8lyqb_q-" 
+
+# ⚠️ KAMUS FOLDER GDRIVE (DYNAMIC ROUTING)
+# Masukkan ID Folder masing-masing divisi di Google Drive Anda:
+DIVISION_FOLDERS = {
+    "Divisi Perencanaan & Keuangan": "1kVAq06Jep0dLL-dTOpDLqtxR3iugcB4F",
+    "Divisi Operasional & Produksi": "1w7nie08G8ZlXpLJzMV9V-7MytF2LIWr9",
+    "Divisi Teknologi Informasi": "1-bPwqpCeY4yRtdGpzfZ4UmjmQKSTk7AV",
+    "Divisi SDM & Umum": "14Q949Rt_UNyEKYenuneBZXlgzznUMOnY",
+    "Lainnya": "1Pdkc9LD7XFkFhioznFWIZozp8lyqb_q-" # Menggunakan folder lama Anda yang sudah berhasil sebagai default
+}
+DIVISION_OPTIONS = list(DIVISION_FOLDERS.keys())
 
 IMPACT_LEVELS = ["High", "Medium", "Low"]
 CATEGORY_OPTIONS = [
@@ -81,7 +91,7 @@ def create_apple_theme():
 # ==============================================================================
 # 3. GOOGLE DRIVE UPLOADER ENGINE
 # ==============================================================================
-def upload_to_gdrive(file_bytes_io, filename):
+def upload_to_gdrive(file_bytes_io, filename, target_folder_id):
     """Mengunggah file ke Google Drive dan mengembalikan URL yang bisa dibaca publik"""
     if not GDRIVE_AVAILABLE:
         return None
@@ -106,9 +116,11 @@ def upload_to_gdrive(file_bytes_io, filename):
         service = build('drive', 'v3', credentials=creds)
         file_bytes_io.seek(0)
         media = MediaIoBaseUpload(file_bytes_io, mimetype='application/octet-stream', resumable=True)
-        file_metadata = {'name': filename, 'parents': [GDRIVE_FOLDER_ID]}
+        
+        # MENGGUNAKAN TARGET FOLDER ID BERDASARKAN DIVISI
+        file_metadata = {'name': filename, 'parents': [target_folder_id]}
 
-       # 1. Proses Upload File (Ini sudah berhasil di sistem Anda)
+       # 1. Proses Upload File 
         uploaded_file = service.files().create(
             body=file_metadata, 
             media_body=media, 
@@ -127,8 +139,6 @@ def upload_to_gdrive(file_bytes_io, filename):
                 supportsAllDrives=True 
             ).execute()
         except Exception as perm_error:
-            # Jika sistem keamanan Shared Drive menolak pengubahan ke publik, 
-            # abaikan saja error-nya. Dokumen sudah aman di dalam Drive.
             pass
             
         # 3. Kembalikan link ke Streamlit untuk disimpan ke database
@@ -178,6 +188,10 @@ class KnowledgeRepository:
         if 'gdrive_link' not in columns:
             try: cur.execute("ALTER TABLE knowledge ADD COLUMN gdrive_link TEXT DEFAULT ''")
             except Exception: pass
+        # Tambahan Kolom Divisi
+        if 'division' not in columns:
+            try: cur.execute("ALTER TABLE knowledge ADD COLUMN division TEXT DEFAULT 'Lainnya'")
+            except Exception: pass
                 
         conn.commit()
         conn.close()
@@ -193,12 +207,12 @@ class KnowledgeRepository:
             conn = self.get_connection()
             cur = conn.cursor()
             cur.execute("""
-                INSERT INTO knowledge (title, project, category, impact, status, summary, root_cause, recommendation, uploader, upload_date, reviewer_notes, gdrive_link)
-                VALUES (?, ?, ?, ?, 'Pending Review', ?, ?, ?, ?, ?, '', ?)
+                INSERT INTO knowledge (title, project, category, impact, status, summary, root_cause, recommendation, uploader, upload_date, reviewer_notes, gdrive_link, division)
+                VALUES (?, ?, ?, ?, 'Pending Review', ?, ?, ?, ?, ?, '', ?, ?)
             """, (
                 data['title'], data['project'], data['category'], data['impact'], 
                 data['summary'], data['root_cause'], data['recommendation'], 
-                data['uploader'], datetime.now().strftime("%d %B %Y"), data.get('gdrive_link', '')
+                data['uploader'], datetime.now().strftime("%d %B %Y"), data.get('gdrive_link', ''), data.get('division', 'Lainnya')
             ))
             conn.commit()
             conn.close()
@@ -223,11 +237,11 @@ class KnowledgeRepository:
             cur = conn.cursor()
             cur.execute("""
                 UPDATE knowledge 
-                SET title = ?, project = ?, category = ?, impact = ?, summary = ?, root_cause = ?, recommendation = ?, gdrive_link = ?, status = 'Pending Review'
+                SET title = ?, project = ?, category = ?, impact = ?, summary = ?, root_cause = ?, recommendation = ?, gdrive_link = ?, division = ?, status = 'Pending Review'
                 WHERE id = ?
             """, (
                 data['title'], data['project'], data['category'], data['impact'], 
-                data['summary'], data['root_cause'], data['recommendation'], data.get('gdrive_link', ''), record_id
+                data['summary'], data['root_cause'], data['recommendation'], data.get('gdrive_link', ''), data.get('division', 'Lainnya'), record_id
             ))
             conn.commit()
             conn.close()
@@ -286,7 +300,7 @@ def extract_knowledge(text: str) -> dict:
     return res
 
 # ==============================================================================
-# 6. UI COMPONENTS & CSS (Dipertahankan Persis Sama)
+# 6. UI COMPONENTS & CSS 
 # ==============================================================================
 def inject_enterprise_css():
     st.markdown("""
@@ -313,6 +327,8 @@ def inject_enterprise_css():
         --sem-green-btn: #8CC8A4;
         --sem-grey-bg: rgba(122, 141, 153, 0.12);
         --sem-grey-text: #667A8A;
+        --sem-purple-bg: rgba(147, 112, 219, 0.15);
+        --sem-purple-text: #6A4C9C;
     }
     html, body, p, h1, h2, h3, h4, h5, h6, label, li { font-family: 'Inter', -apple-system, sans-serif !important; }
     .stApp, [data-testid="stAppViewContainer"] { background-color: var(--bg) !important; }
@@ -346,6 +362,7 @@ def inject_enterprise_css():
     .badge-impact-Medium { background-color: var(--sem-yellow-bg); color: var(--sem-yellow-text); }
     .badge-impact-Low { background-color: var(--sem-grey-bg); color: var(--sem-grey-text); }
     .badge-category { background-color: var(--sem-grey-bg); color: var(--sem-grey-text); border: 1px solid rgba(122, 141, 153, 0.2); }
+    .badge-division { background-color: var(--sem-purple-bg); color: var(--sem-purple-text); border: 1px solid rgba(147, 112, 219, 0.2); }
     .gdrive-link-btn { display: inline-flex; align-items: center; gap: 8px; background-color: rgba(107, 163, 206, 0.12); color: var(--accent-blue) !important; padding: 8px 18px; border-radius: 12px; font-weight: 700; font-size: 13.5px; text-decoration: none !important; margin-top: 16px; transition: all 0.2s ease; font-family: 'Inter', sans-serif !important; border: 1px solid rgba(107, 163, 206, 0.25); }
     .gdrive-link-btn:hover { background-color: var(--accent-blue); color: var(--surface) !important; transform: translateY(-2px); }
     .custom-details { margin-top: 20px; }
@@ -357,8 +374,8 @@ def inject_enterprise_css():
     @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
     .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div { background-color: var(--bg) !important; border: 1px solid var(--border) !important; border-radius: 18px !important; padding: 16px 20px !important; font-size: 17px; font-weight: 500; color: var(--text-primary) !important; transition: .2s ease; }
     .stTextInput input:focus, .stTextArea textarea:focus, .stSelectbox div[data-baseweb="select"] > div:focus-within { border-color: var(--accent-blue) !important; box-shadow: 0 0 0 2px rgba(107,163,206,0.3) !important; }
-    .stButton button, .stDownloadButton button { background-color: var(--accent-blue) !important; color: var(--surface) !important; border-radius: 20px !important; padding: 16px 32px !important; font-weight: 600 !important; font-size: 17px !important; border: none !important; transition: transform .3s, box-shadow .3s, background-color .3s !important; width: 100%; }
-    .stButton button:hover, .stDownloadButton button:hover { background-color: var(--accent-blue-hover) !important; transform: translateY(-2px); box-shadow: 0 15px 30px rgba(107, 163, 206, 0.25) !important; }
+    .stButton button, .stDownloadButton button, [data-testid="stFormSubmitButton"] button { background-color: var(--accent-blue) !important; color: var(--surface) !important; border-radius: 20px !important; padding: 16px 32px !important; font-weight: 600 !important; font-size: 17px !important; border: none !important; transition: transform .3s, box-shadow .3s, background-color .3s !important; width: 100%; }
+    .stButton button:hover, .stDownloadButton button:hover, [data-testid="stFormSubmitButton"] button:hover { background-color: var(--accent-blue-hover) !important; transform: translateY(-2px); box-shadow: 0 15px 30px rgba(107, 163, 206, 0.25) !important; }
     .stButton button p, .stDownloadButton button p { color: var(--surface) !important; margin:0;}
     div[data-testid="stButton"] button:has(p:contains("Reject")) { background-color: var(--sem-red-btn) !important; }
     div[data-testid="stButton"] button:has(p:contains("Reject")):hover { background-color: #C26B6B !important; box-shadow: 0 15px 30px rgba(217, 128, 128, 0.3) !important; }
@@ -394,6 +411,8 @@ def render_knowledge_card(row, compact=True):
     gdrive_link = row['gdrive_link'] if 'gdrive_link' in row.keys() and row['gdrive_link'] else ""
     gdrive_html = f"""<div style="margin-top: 16px;"><a href="{gdrive_link}" target="_blank" class="gdrive-link-btn">📂 Open Google Drive Document</a></div>""" if gdrive_link else ""
     
+    div_badge = f"<span class='badge badge-division'> {row.get('division', 'Lainnya')}</span>" if 'division' in row.keys() else ""
+
     if compact:
         is_long = len(str(row['summary'])) > 150
         short_summary = (str(row['summary'])[:150] + "...").replace('\n', '<br>') if is_long else sum_txt
@@ -404,6 +423,7 @@ def render_knowledge_card(row, compact=True):
 <div style="margin-bottom: 24px;">
 <span class="badge badge-status-{status_str}">{row['status']}</span>
 <span class="badge badge-impact-{impact_str}">{row['impact']} Impact</span>
+{div_badge}
 <span class="badge badge-category">{row['category']}</span>
 </div>
 <div class="card-section">Summary (Preview)</div>
@@ -428,6 +448,7 @@ def render_knowledge_card(row, compact=True):
 <div style="margin-bottom: 24px;">
 <span class="badge badge-status-{status_str}">{row['status']}</span>
 <span class="badge badge-impact-{impact_str}">{row['impact']} Impact</span>
+{div_badge}
 <span class="badge badge-category">{row['category']}</span>
 </div>
 <div class="card-section">Summary</div>
@@ -524,7 +545,6 @@ def view_upload(repo):
             with st.spinner("Extracting knowledge..."):
                 file_bytes = io.BytesIO(uploaded_file.read())
                 
-                # Simpan file di memory agar bisa di-upload ke GDrive nanti
                 st.session_state.uploaded_file_bytes = file_bytes
                 st.session_state.uploaded_filename = uploaded_file.name
                 
@@ -542,15 +562,17 @@ def view_upload(repo):
     with st.container(border=True):
         with st.form("entry_form", border=False):
             title = st.text_input("Title", placeholder="Entry Title")
-            c1, c2 = st.columns(2)
+            c1, c2, c3 = st.columns([1, 1, 1])
             with c1:
                 project = st.text_input("Project", placeholder="Project Name")
-                category = st.selectbox("Category", CATEGORY_OPTIONS)
-            with c2:
                 uploader = st.text_input("Uploader", placeholder="Your Name")
+            with c2:
+                # TAMBAHAN PILIHAN DIVISI
+                division = st.selectbox("Divisi (Tujuan Folder)", DIVISION_OPTIONS)
+                category = st.selectbox("Category", CATEGORY_OPTIONS)
+            with c3:
                 impact = st.selectbox("Impact", IMPACT_LEVELS)
                 
-            # Field Gdrive ditiadakan karena prosesnya kini otomatis
             summary = st.text_area("Summary", value=st.session_state.ai_summary, placeholder="Brief description...", height=120)
             root_cause = st.text_area("Root Cause", value=st.session_state.ai_root, placeholder="Underlying issue...", height=120)
             recommendation = st.text_area("Recommendation", value=st.session_state.ai_rec, placeholder="Action plan...", height=120)
@@ -560,20 +582,21 @@ def view_upload(repo):
                 if title and summary:
                     auto_gdrive_link = ""
                     
-                    # Logika Auto-Upload ke GDrive
                     if st.session_state.uploaded_file_bytes:
                         if GDRIVE_AVAILABLE and ("gcp_service_account" in st.secrets or os.path.exists(GDRIVE_CREDENTIALS_FILE)):
                             with st.spinner("Mengunggah dokumen asli ke Google Drive..."):
-                                link = upload_to_gdrive(st.session_state.uploaded_file_bytes, st.session_state.uploaded_filename)
+                                # MENGAMBIL FOLDER ID BERDASARKAN DIVISI YANG DIPILIH
+                                target_folder_id = DIVISION_FOLDERS.get(division, DIVISION_FOLDERS["Lainnya"])
+                                link = upload_to_gdrive(st.session_state.uploaded_file_bytes, st.session_state.uploaded_filename, target_folder_id)
                                 if link: auto_gdrive_link = link
                         else:
-                            st.warning("Google Drive API belum dikonfigurasi (credentials.json tidak ditemukan). Tautan GDrive akan dikosongkan.")
+                            st.warning("Google Drive API belum dikonfigurasi. Tautan GDrive akan dikosongkan.")
 
                     data = {
                         "title": title, "project": project, "category": category,
                         "impact": impact, "summary": summary, "root_cause": root_cause,
                         "recommendation": recommendation, "uploader": uploader,
-                        "gdrive_link": auto_gdrive_link
+                        "gdrive_link": auto_gdrive_link, "division": division
                     }
                     if repo.insert(data):
                         st.session_state.ai_summary = ""
@@ -601,7 +624,6 @@ def view_revision(repo):
         if f'rev_root_{rid}' not in st.session_state: st.session_state[f'rev_root_{rid}'] = row['root_cause']
         if f'rev_rec_{rid}' not in st.session_state: st.session_state[f'rev_rec_{rid}'] = row['recommendation']
         
-        # Simpan state file revisi yang diupload
         if f'rev_file_{rid}' not in st.session_state: st.session_state[f'rev_file_{rid}'] = None
         if f'rev_filename_{rid}' not in st.session_state: st.session_state[f'rev_filename_{rid}'] = ""
 
@@ -638,12 +660,15 @@ def view_revision(repo):
             st.write("")
             with st.form(f"form_rev_{rid}", border=False):
                 title = st.text_input("Title", value=row['title'])
-                c1, c2 = st.columns(2)
+                c1, c2, c3 = st.columns([1,1,1])
                 with c1:
                     project = st.text_input("Project", value=row['project'])
+                    div_idx = DIVISION_OPTIONS.index(row.get('division', 'Lainnya')) if row.get('division', 'Lainnya') in DIVISION_OPTIONS else len(DIVISION_OPTIONS)-1
+                    division = st.selectbox("Divisi", DIVISION_OPTIONS, index=div_idx)
+                with c2:
                     cat_idx = CATEGORY_OPTIONS.index(row['category']) if row['category'] in CATEGORY_OPTIONS else 0
                     category = st.selectbox("Category", CATEGORY_OPTIONS, index=cat_idx)
-                with c2:
+                with c3:
                     imp_idx = IMPACT_LEVELS.index(row['impact']) if row['impact'] in IMPACT_LEVELS else 0
                     impact = st.selectbox("Impact", IMPACT_LEVELS, index=imp_idx)
                     
@@ -653,21 +678,21 @@ def view_revision(repo):
                 
                 st.write("")
                 if st.form_submit_button("Resubmit for Review"):
-                    
                     new_gdrive_link = row['gdrive_link']
-                    # Auto upload GDrive untuk revisi jika ada file baru yang diunggah
+                    
                     if st.session_state[f'rev_file_{rid}']:
-                       if GDRIVE_AVAILABLE and ("gcp_service_account" in st.secrets or os.path.exists(GDRIVE_CREDENTIALS_FILE)):
-                            link = upload_to_gdrive(st.session_state[f'rev_file_{rid}'], st.session_state[f'rev_filename_{rid}'])
+                        if GDRIVE_AVAILABLE and ("gcp_service_account" in st.secrets or os.path.exists(GDRIVE_CREDENTIALS_FILE)):
+                            target_folder_id = DIVISION_FOLDERS.get(division, DIVISION_FOLDERS["Lainnya"])
+                            link = upload_to_gdrive(st.session_state[f'rev_file_{rid}'], st.session_state[f'rev_filename_{rid}'], target_folder_id)
                             if link: new_gdrive_link = link
                     
                     data = {
                         'title': title, 'project': project, 'category': category,
                         'impact': impact, 'summary': summary, 'root_cause': root_cause,
-                        'recommendation': recommendation, 'gdrive_link': new_gdrive_link
+                        'recommendation': recommendation, 'gdrive_link': new_gdrive_link,
+                        'division': division
                     }
                     if repo.resubmit_record(rid, data):
-                        # Bersihkan cache revisi
                         for key in [f'rev_sum_{rid}', f'rev_root_{rid}', f'rev_rec_{rid}', f'rev_file_{rid}', f'rev_filename_{rid}']:
                             if key in st.session_state: del st.session_state[key]
                         st.rerun()
@@ -744,7 +769,7 @@ def main():
     with st.sidebar:
         st.markdown("<div style='font-size: 14px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 24px; padding-left: 10px; font-family: \"Inter\", sans-serif;'>PT Bukit Asam KM</div>", unsafe_allow_html=True)
         navigation = st.radio("Nav", ["Dashboard", "Browse", "New Entry", "Revision Desk", "Approval", "Export"], label_visibility="collapsed")
-        st.markdown("<div style='margin-top: 60px; padding-left: 10px; font-size: 12px; font-weight: 600; color: var(--text-secondary); font-family: \"Inter\", sans-serif;'>Repository<br>Version 1.4</div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top: 60px; padding-left: 10px; font-size: 12px; font-weight: 600; color: var(--text-secondary); font-family: \"Inter\", sans-serif;'>Repository<br>Version 1.5</div>", unsafe_allow_html=True)
 
     if navigation == "Dashboard": view_dashboard(repo)
     elif navigation == "Browse": view_browse(repo)
