@@ -512,6 +512,11 @@ def view_browse(repo):
 def view_upload(repo):
     st.markdown("<div class='section-title'>New Knowledge Entry</div>", unsafe_allow_html=True)
     
+    # 1. LOGIKA BARU: Menampilkan notifikasi persisten setelah form sukses di-save
+    if st.session_state.get('show_success_notif'):
+        render_notification("✅ Entry telah di-save!")
+        st.session_state.show_success_notif = False
+    
     if 'ai_summary' not in st.session_state: st.session_state.ai_summary = ""
     if 'ai_root' not in st.session_state: st.session_state.ai_root = ""
     if 'ai_rec' not in st.session_state: st.session_state.ai_rec = ""
@@ -537,7 +542,8 @@ def view_upload(repo):
                     st.session_state.ai_summary = ai_result["summary"]
                     st.session_state.ai_root = ai_result["root_cause"]
                     st.session_state.ai_rec = ai_result["recommendation"]
-                    render_notification("Document analyzed. Form populated below.")
+                    # Menggunakan Toast agar lebih interaktif
+                    st.toast("AI berhasil mengekstrak dokumen!", icon="🤖")
                 else:
                     st.error("Could not extract text from document.")
     st.write("")
@@ -546,7 +552,6 @@ def view_upload(repo):
         with st.form("entry_form", border=False):
             title = st.text_input("Title", placeholder="Entry Title")
             
-            # Form diperbarui menjadi 2 kolom agar lebih proporsional setelah Category dihapus
             c1, c2 = st.columns(2)
             with c1:
                 project = st.text_input("Project", placeholder="Project Name")
@@ -580,12 +585,16 @@ def view_upload(repo):
                         "gdrive_link": auto_gdrive_link, "division": division
                     }
                     if repo.insert(data):
+                        # Bersihkan memori draft AI
                         st.session_state.ai_summary = ""
                         st.session_state.ai_root = ""
                         st.session_state.ai_rec = ""
                         st.session_state.uploaded_file_bytes = None
                         st.session_state.uploaded_filename = ""
-                        render_notification("Entry successfully saved.")
+                        
+                        # 2. LOGIKA BARU: Simpan status ke memori lalu paksa aplikasi untuk memuat ulang formulir (refresh)
+                        st.session_state.show_success_notif = True
+                        st.rerun()
                 else:
                     st.error("Title and Summary are required.")
 
