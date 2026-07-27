@@ -83,14 +83,27 @@ def create_apple_theme():
 # ==============================================================================
 def upload_to_gdrive(file_bytes_io, filename):
     """Mengunggah file ke Google Drive dan mengembalikan URL yang bisa dibaca publik"""
-    if not GDRIVE_AVAILABLE or not os.path.exists(GDRIVE_CREDENTIALS_FILE):
+    if not GDRIVE_AVAILABLE:
         return None
         
     try:
         scopes = ['https://www.googleapis.com/auth/drive.file']
-        creds = service_account.Credentials.from_service_account_file(GDRIVE_CREDENTIALS_FILE, scopes=scopes)
-        service = build('drive', 'v3', credentials=creds)
+        creds = None
+        
+        # 1. Cek apakah berjalan di Streamlit Cloud (membaca dari st.secrets)
+        if "gcp_service_account" in st.secrets:
+            creds = service_account.Credentials.from_service_account_info(
+                st.secrets["gcp_service_account"], scopes=scopes
+            )
+        # 2. Fallback ke file lokal jika berjalan di komputer sendiri
+        elif os.path.exists(GDRIVE_CREDENTIALS_FILE):
+            creds = service_account.Credentials.from_service_account_file(
+                GDRIVE_CREDENTIALS_FILE, scopes=scopes
+            )
+        else:
+            return None
 
+        service = build('drive', 'v3', credentials=creds)
         file_bytes_io.seek(0)
         media = MediaIoBaseUpload(file_bytes_io, mimetype='application/octet-stream', resumable=True)
         file_metadata = {'name': filename, 'parents': [GDRIVE_FOLDER_ID]}
@@ -102,7 +115,7 @@ def upload_to_gdrive(file_bytes_io, filename):
         
         file_id = uploaded_file.get('id')
         
-        # Ubah permission agar bisa dibaca siapa saja yang memiliki link (Opsional)
+        # Ubah permission agar bisa dibaca siapa saja yang memiliki link
         service.permissions().create(
             fileId=file_id,
             body={'type': 'anyone', 'role': 'reader'}
