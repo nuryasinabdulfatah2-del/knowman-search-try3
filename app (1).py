@@ -2,6 +2,7 @@
 """
 PT Bukit Asam Knowledge Management System
 Architecture: Object-Oriented, Auto GDrive Integration, Dynamic Routing, GEMINI AI INTEGRATION
+Format: Lessons Learned Register
 """
 
 import streamlit as st
@@ -54,22 +55,24 @@ except ImportError:
 # 2. CORE CONFIGURATION
 # ==============================================================================
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "km_enterprise.db")
-GDRIVE_CREDENTIALS_FILE = "gdrive_credentials.json" 
 
+# MAPPING FOLDER G-DRIVE BERDASARKAN TIPE / DIVISI
+# Ganti dengan ID Folder masing-masing divisi yang sudah di-share ke email Service Account
 DIVISION_FOLDERS = {
-    "Divisi Perencanaan & Keuangan": "1kVAq06Jep0dLL-dTOpDLqtxR3iugcB4F",
-    "Divisi Operasional & Produksi": "1w7nie08G8ZlXpLJzMV9V-7MytF2LIWr9",
-    "Divisi Teknologi Informasi": "1-bPwqpCeY4yRtdGpzfZ4UmjmQKSTk7AV",
-    "Divisi SDM & Umum": "14Q949Rt_UNyEKYenuneBZXlgzznUMOnY",
-    "Lainnya": "1Pdkc9LD7XFkFhioznFWIZozp8lyqb_q-"
+    "Human Resources (HR)": "14Q949Rt_UNyEKYenuneBZXlgzznUMOnY",
+    "Information Technology (IT)": "1-bPwqpCeY4yRtdGpzfZ4UmjmQKSTk7AV",
+    "Finance": "1Pdkc9LD7XFkFhioznFWIZozp8lyqb_q-",
+    "Operations": "1kVAq06Jep0dLL-dTOpDLqtxR3iugcB4F",
+    "Lainnya": "1Pdkc9LD7XFkFhioznFWIZozp8lyqb_q-" # Folder Default
 }
-DIVISION_OPTIONS = list(DIVISION_FOLDERS.keys())
-IMPACT_LEVELS = ["High", "Medium", "Low"]
 
-# Keywords Lama (Untuk Fallback jika Gemini tidak tersedia)
-KEYWORDS_SUMMARY = ["isu", "masalah", "kendala", "permasalahan", "issue", "problem"]
-KEYWORDS_ROOT_CAUSE = ["akar masalah", "akar penyebab", "disebabkan", "root cause"]
-KEYWORDS_RECOMMENDATION = ["rekomendasi", "solusi", "usulan", "tindak lanjut", "saran"]
+TIPE_DIVISI_OPTIONS = list(DIVISION_FOLDERS.keys())
+KATEGORI_OPTIONS = ["Area perbaikan", "Apa yang berhasil", "Apa yang tidak berhasil"]
+
+KEYWORDS_DESKRIPSI = ["isu", "masalah", "kendala", "terhambat", "deskripsi"]
+KEYWORDS_DAMPAK = ["dampak", "akibat", "menyebabkan", "tertunda"]
+KEYWORDS_PENCEGAHAN = ["pencegahan", "solusi", "rekomendasi", "memilih"]
+KEYWORDS_TANTANGAN = ["tantangan", "risiko", "kemungkinan", "hambatan"]
 
 def create_apple_theme():
     font_family = "'Inter', -apple-system, sans-serif"
@@ -93,9 +96,8 @@ def upload_to_gdrive(file_bytes_io, filename, target_folder_id):
         scopes = ['https://www.googleapis.com/auth/drive.file']
         creds = None
         if "gcp_service_account" in st.secrets:
-            creds = service_account.Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scopes)
-        elif os.path.exists(GDRIVE_CREDENTIALS_FILE):
-            creds = service_account.Credentials.from_service_account_file(GDRIVE_CREDENTIALS_FILE, scopes=scopes)
+            creds_dict = dict(st.secrets["gcp_service_account"])
+            creds = service_account.Credentials.from_service_account_info(creds_dict, scopes=scopes)
         else: return None
 
         service = build('drive', 'v3', credentials=creds)
@@ -116,7 +118,7 @@ def upload_to_gdrive(file_bytes_io, filename, target_folder_id):
         return None
 
 # ==============================================================================
-# 4. DATA REPOSITORY 
+# 4. DATA REPOSITORY (NEW SCHEMA: LESSONS LEARNED)
 # ==============================================================================
 class KnowledgeRepository:
     def __init__(self, db_path):
@@ -131,24 +133,29 @@ class KnowledgeRepository:
     def _init_db(self):
         conn = self.get_connection()
         cur = conn.cursor()
-        cur.execute("""CREATE TABLE IF NOT EXISTS knowledge (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, project TEXT, category TEXT, impact TEXT, status TEXT DEFAULT 'Pending Review', summary TEXT, root_cause TEXT, recommendation TEXT, uploader TEXT, upload_date TEXT)""")
-        cur.execute("PRAGMA table_info(knowledge)")
-        columns = [column[1] for column in cur.fetchall()]
-        if 'reviewer_notes' not in columns:
-            try: cur.execute("ALTER TABLE knowledge ADD COLUMN reviewer_notes TEXT DEFAULT ''")
-            except Exception: pass
-        if 'gdrive_link' not in columns:
-            try: cur.execute("ALTER TABLE knowledge ADD COLUMN gdrive_link TEXT DEFAULT ''")
-            except Exception: pass
-        if 'division' not in columns:
-            try: cur.execute("ALTER TABLE knowledge ADD COLUMN division TEXT DEFAULT 'Lainnya'")
-            except Exception: pass
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS lessons_learned (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                nama_proyek TEXT NOT NULL, 
+                manajer_proyek TEXT, 
+                kategori TEXT, 
+                tipe TEXT, 
+                deskripsi_isu TEXT, 
+                dampak_isu TEXT, 
+                aktivitas_pencegahan TEXT,
+                tantangan TEXT,
+                status TEXT DEFAULT 'Pending Review', 
+                upload_date TEXT,
+                reviewer_notes TEXT DEFAULT '',
+                gdrive_link TEXT DEFAULT ''
+            )
+        """)
         conn.commit()
         conn.close()
 
     def fetch_all(self):
         conn = self.get_connection()
-        df = pd.read_sql_query("SELECT * FROM knowledge ORDER BY id DESC", conn)
+        df = pd.read_sql_query("SELECT * FROM lessons_learned ORDER BY id DESC", conn)
         conn.close()
         return df
 
@@ -156,17 +163,27 @@ class KnowledgeRepository:
         try:
             conn = self.get_connection()
             cur = conn.cursor()
-            cur.execute("""INSERT INTO knowledge (title, project, category, impact, status, summary, root_cause, recommendation, uploader, upload_date, reviewer_notes, gdrive_link, division) VALUES (?, ?, ?, ?, 'Pending Review', ?, ?, ?, ?, ?, '', ?, ?)""", (data['title'], data['project'], data['division'], data['impact'], data['summary'], data['root_cause'], data['recommendation'], data['uploader'], datetime.now().strftime("%d %B %Y"), data.get('gdrive_link', ''), data.get('division', 'Lainnya')))
+            cur.execute("""
+                INSERT INTO lessons_learned 
+                (nama_proyek, manajer_proyek, kategori, tipe, deskripsi_isu, dampak_isu, aktivitas_pencegahan, tantangan, status, upload_date, gdrive_link) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pending Review', ?, ?)
+            """, (
+                data['nama_proyek'], data['manajer_proyek'], data['kategori'], data['tipe'], 
+                data['deskripsi_isu'], data['dampak_isu'], data['aktivitas_pencegahan'], data['tantangan'], 
+                datetime.now().strftime("%d %B %Y"), data.get('gdrive_link', '')
+            ))
             conn.commit()
             conn.close()
             return True
-        except Exception: return False
+        except Exception as e: 
+            st.error(f"DB Insert Error: {e}")
+            return False
 
     def update_status(self, record_id, new_status, notes=""):
         try:
             conn = self.get_connection()
             cur = conn.cursor()
-            cur.execute("UPDATE knowledge SET status = ?, reviewer_notes = ? WHERE id = ?", (new_status, notes, record_id))
+            cur.execute("UPDATE lessons_learned SET status = ?, reviewer_notes = ? WHERE id = ?", (new_status, notes, record_id))
             conn.commit()
             conn.close()
             return True
@@ -176,7 +193,15 @@ class KnowledgeRepository:
         try:
             conn = self.get_connection()
             cur = conn.cursor()
-            cur.execute("""UPDATE knowledge SET title = ?, project = ?, category = ?, impact = ?, summary = ?, root_cause = ?, recommendation = ?, gdrive_link = ?, division = ?, status = 'Pending Review' WHERE id = ?""", (data['title'], data['project'], data['division'], data['impact'], data['summary'], data['root_cause'], data['recommendation'], data.get('gdrive_link', ''), data.get('division', 'Lainnya'), record_id))
+            cur.execute("""
+                UPDATE lessons_learned 
+                SET nama_proyek = ?, manajer_proyek = ?, kategori = ?, tipe = ?, deskripsi_isu = ?, dampak_isu = ?, aktivitas_pencegahan = ?, tantangan = ?, gdrive_link = ?, status = 'Pending Review' 
+                WHERE id = ?
+            """, (
+                data['nama_proyek'], data['manajer_proyek'], data['kategori'], data['tipe'], 
+                data['deskripsi_isu'], data['dampak_isu'], data['aktivitas_pencegahan'], data['tantangan'], 
+                data.get('gdrive_link', ''), record_id
+            ))
             conn.commit()
             conn.close()
             return True
@@ -186,7 +211,7 @@ class KnowledgeRepository:
         try:
             conn = self.get_connection()
             cur = conn.cursor()
-            cur.execute("DELETE FROM knowledge WHERE id = ?", (record_id,))
+            cur.execute("DELETE FROM lessons_learned WHERE id = ?", (record_id,))
             conn.commit()
             conn.close()
             return True
@@ -218,25 +243,25 @@ def parse_document(file_bytes, filename) -> str:
     return ""
 
 def extract_knowledge(text: str) -> dict:
-    """Menganalisis teks menggunakan Google Gemini AI via st.secrets"""
-    res = {"summary": "", "root_cause": "", "recommendation": ""}
+    """Menganalisis teks ke dalam format Lessons Learned menggunakan Gemini AI"""
+    res = {"deskripsi_isu": "", "dampak_isu": "", "aktivitas_pencegahan": "", "tantangan": ""}
     if not text: return res
 
-    # Menggunakan API Key dari st.secrets yang sudah diperbaiki formatnya
     if GEMINI_AVAILABLE and "GEMINI_API_KEY" in st.secrets:
         try:
             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
             model = genai.GenerativeModel('gemini-1.5-flash')
             
             prompt = f"""
-            Anda adalah analis Knowledge Management profesional.
-            Baca teks ini dan rangkum menjadi 3 poin penting.
+            Anda adalah analis Lessons Learned Register profesional di industri pertambangan/enterprise.
+            Baca teks laporan di bawah ini dan rangkum menjadi 4 bagian spesifik.
             
-            WAJIB balas HANYA dengan format JSON persis seperti ini tanpa tambahan teks apapun di awal atau akhir:
+            WAJIB balas HANYA dengan format JSON persis seperti ini (tanpa tambahan teks apa pun):
             {{
-                "summary": "Tuliskan ringkasan masalah utama di sini...",
-                "root_cause": "Tuliskan akar penyebab terjadinya masalah di sini...",
-                "recommendation": "Tuliskan rekomendasi atau solusi yang diajukan di sini..."
+                "deskripsi_isu": "Jelaskan masalah utama yang terjadi secara ringkas...",
+                "dampak_isu": "Jelaskan apa akibat dari masalah tersebut terhadap operasional/proyek...",
+                "aktivitas_pencegahan": "Jelaskan tindakan korektif atau solusi yang direkomendasikan...",
+                "tantangan": "Jelaskan kemungkinan risiko atau hambatan saat menerapkan solusi tersebut..."
             }}
 
             TEKS DOKUMEN:
@@ -244,7 +269,7 @@ def extract_knowledge(text: str) -> dict:
             """
             response = model.generate_content(prompt)
             
-            clean_text = response.text.string if hasattr(response, 'string') else response.text.strip()
+            clean_text = response.text.strip()
             if clean_text.startswith("```json"): clean_text = clean_text[7:]
             elif clean_text.startswith("```"): clean_text = clean_text[3:]
             if clean_text.endswith("```"): clean_text = clean_text[:-3]
@@ -252,22 +277,24 @@ def extract_knowledge(text: str) -> dict:
             
             ai_data = json.loads(clean_text)
             
-            res["summary"] = ai_data.get("summary", "")
-            res["root_cause"] = ai_data.get("root_cause", "")
-            res["recommendation"] = ai_data.get("recommendation", "")
+            res["deskripsi_isu"] = ai_data.get("deskripsi_isu", "")
+            res["dampak_isu"] = ai_data.get("dampak_isu", "")
+            res["aktivitas_pencegahan"] = ai_data.get("aktivitas_pencegahan", "")
+            res["tantangan"] = ai_data.get("tantangan", "")
             return res
             
         except Exception as e:
             st.error(f"❌ GEMINI GAGAL: {e}")
             
-    # Metode Fallback (Keyword Sederhana jika API Key tidak aktif)
+    # Metode Fallback (Keyword Sederhana)
     sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if len(s) > 15]
     def extract_by_keywords(kw_list):
         matched = [s for s in sentences if any(kw in s.lower() for kw in kw_list)]
         return " ".join(matched[:3])
-    res["summary"] = extract_by_keywords(KEYWORDS_SUMMARY) or (" ".join(sentences[:2]) if sentences else "")
-    res["root_cause"] = extract_by_keywords(KEYWORDS_ROOT_CAUSE)
-    res["recommendation"] = extract_by_keywords(KEYWORDS_RECOMMENDATION)
+    res["deskripsi_isu"] = extract_by_keywords(KEYWORDS_DESKRIPSI) or (" ".join(sentences[:2]) if sentences else "")
+    res["dampak_isu"] = extract_by_keywords(KEYWORDS_DAMPAK)
+    res["aktivitas_pencegahan"] = extract_by_keywords(KEYWORDS_PENCEGAHAN)
+    res["tantangan"] = extract_by_keywords(KEYWORDS_TANTANGAN)
     return res
 
 # ==============================================================================
@@ -276,7 +303,7 @@ def extract_knowledge(text: str) -> dict:
 def inject_enterprise_css():
     st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Inter:wght@400;500;600;700;800;900&display=swap');
+    @import url('[https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Inter:wght@400;500;600;700;800;900&display=swap](https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Inter:wght@400;500;600;700;800;900&display=swap)');
     :root {
         --bg: #F4F9F8; --surface: #FFFFFF; --text-primary: #1E2A32; --text-secondary: #7A8D99;
         --border: rgba(107, 163, 206, 0.15); --accent-blue: #6BA3CE; --accent-blue-hover: #5A8DB7;
@@ -310,10 +337,8 @@ def inject_enterprise_css():
     .badge-status-Verified { background-color: var(--sem-green-bg); color: var(--sem-green-text); }
     .badge-status-NeedsRevision { background-color: var(--sem-yellow-bg); color: var(--sem-yellow-text); }
     .badge-status-Rejected { background-color: var(--sem-red-bg); color: var(--sem-red-text); }
-    .badge-impact-High { background-color: var(--sem-red-bg); color: var(--sem-red-text); }
-    .badge-impact-Medium { background-color: var(--sem-yellow-bg); color: var(--sem-yellow-text); }
-    .badge-impact-Low { background-color: var(--sem-grey-bg); color: var(--sem-grey-text); }
-    .badge-division { background-color: var(--sem-purple-bg); color: var(--sem-purple-text); border: 1px solid rgba(147, 112, 219, 0.2); }
+    .badge-kategori { background-color: var(--sem-purple-bg); color: var(--sem-purple-text); border: 1px solid rgba(147, 112, 219, 0.2); }
+    .badge-tipe { background-color: var(--sem-blue-bg); color: var(--accent-blue); border: 1px solid rgba(107, 163, 206, 0.2); }
     .gdrive-link-btn { display: inline-flex; align-items: center; gap: 8px; background-color: rgba(107, 163, 206, 0.12); color: var(--accent-blue) !important; padding: 8px 18px; border-radius: 12px; font-weight: 700; font-size: 13.5px; text-decoration: none !important; margin-top: 16px; transition: all 0.2s ease; border: 1px solid rgba(107, 163, 206, 0.25); }
     .gdrive-link-btn:hover { background-color: var(--accent-blue); color: var(--surface) !important; transform: translateY(-2px); }
     .custom-details { margin-top: 20px; }
@@ -346,60 +371,106 @@ def render_small_kpi(title, value):
 
 def render_knowledge_card(row, compact=True):
     status_str = str(row['status']).replace(" Pending Review", "Pending").replace(" ", "")
-    impact_str = str(row['impact']).replace(" ", "")
-    sum_txt = str(row['summary']).replace('\n', '<br>')
-    rc_txt = str(row['root_cause']).replace('\n', '<br>')
-    rec_txt = str(row['recommendation']).replace('\n', '<br>')
+    
+    # Text clean up for HTML
+    deskripsi = str(row['deskripsi_isu']).replace('\n', '<br>')
+    dampak = str(row['dampak_isu']).replace('\n', '<br>')
+    pencegahan = str(row['aktivitas_pencegahan']).replace('\n', '<br>')
+    tantangan = str(row['tantangan']).replace('\n', '<br>')
+    
     gdrive_link = row['gdrive_link'] if 'gdrive_link' in row.keys() and row['gdrive_link'] else ""
     gdrive_html = f"""<div style="margin-top: 16px;"><a href="{gdrive_link}" target="_blank" class="gdrive-link-btn">📂 Open Google Drive Document</a></div>""" if gdrive_link else ""
-    div_badge = f"<span class='badge badge-division'> {row.get('division', 'Lainnya')}</span>" if 'division' in row.keys() else ""
+    
+    kat_badge = f"<span class='badge badge-kategori'>{row.get('kategori', 'Area perbaikan')}</span>"
+    tipe_badge = f"<span class='badge badge-tipe'>Divisi: {row.get('tipe', '-')}</span>"
 
     if compact:
-        is_long = len(str(row['summary'])) > 150
-        short_summary = (str(row['summary'])[:150] + "...").replace('\n', '<br>') if is_long else sum_txt
-        card_html = f"""<div class="bento"><div class="card-title">{row['title']}</div><div class="card-meta">{row['project']} &nbsp;|&nbsp; {row['upload_date']}</div><div style="margin-bottom: 24px;"><span class="badge badge-status-{status_str}">{row['status']}</span><span class="badge badge-impact-{impact_str}">{row['impact']} Impact</span>{div_badge}</div><div class="card-section">Summary (Preview)</div><div class="card-body">{short_summary}</div>{gdrive_html}<details class="custom-details"><summary class="custom-summary">Show Full Details</summary><div class="details-content"><div class="card-section" style="margin-top:0;">Full Summary</div><div class="card-body">{sum_txt}</div><div class="card-section">Root Cause</div><div class="card-body">{rc_txt}</div><div class="card-section">Recommendation</div><div class="card-body" style="font-weight: 600;">{rec_txt}</div></div></details></div>"""
+        is_long = len(str(row['deskripsi_isu'])) > 120
+        short_desc = (str(row['deskripsi_isu'])[:120] + "...").replace('\n', '<br>') if is_long else deskripsi
+        card_html = f"""
+        <div class="bento">
+            <div class="card-title">{row['nama_proyek']}</div>
+            <div class="card-meta">PM: {row['manajer_proyek']} &nbsp;|&nbsp; Last Updated: {row['upload_date']}</div>
+            <div style="margin-bottom: 24px;">
+                <span class="badge badge-status-{status_str}">{row['status']}</span>
+                {kat_badge} {tipe_badge}
+            </div>
+            <div class="card-section">Deskripsi Isu (Preview)</div>
+            <div class="card-body">{short_desc}</div>
+            {gdrive_html}
+            <details class="custom-details">
+                <summary class="custom-summary">Show Full Register Details</summary>
+                <div class="details-content">
+                    <div class="card-section" style="margin-top:0;">Deskripsi Isu</div>
+                    <div class="card-body">{deskripsi}</div>
+                    <div class="card-section">Dampak Isu</div>
+                    <div class="card-body">{dampak}</div>
+                    <div class="card-section">Aktivitas Pencegahan yang Dapat Dilakukan</div>
+                    <div class="card-body" style="font-weight: 600;">{pencegahan}</div>
+                    <div class="card-section">Tantangan yang Mungkin Dihadapi</div>
+                    <div class="card-body">{tantangan}</div>
+                </div>
+            </details>
+        </div>"""
     else:
-        card_html = f"""<div class="bento"><div class="card-title">{row['title']}</div><div class="card-meta">{row['project']} &nbsp;|&nbsp; {row['upload_date']}</div><div style="margin-bottom: 24px;"><span class="badge badge-status-{status_str}">{row['status']}</span><span class="badge badge-impact-{impact_str}">{row['impact']} Impact</span>{div_badge}</div><div class="card-section">Summary</div><div class="card-body">{sum_txt}</div><div class="card-section">Root Cause</div><div class="card-body">{rc_txt}</div><div class="card-section">Recommendation</div><div class="card-body" style="font-weight: 600;">{rec_txt}</div>{gdrive_html}</div>"""
+        card_html = f"""
+        <div class="bento">
+            <div class="card-title">{row['nama_proyek']}</div>
+            <div class="card-meta">PM: {row['manajer_proyek']} &nbsp;|&nbsp; Last Updated: {row['upload_date']}</div>
+            <div style="margin-bottom: 24px;">
+                <span class="badge badge-status-{status_str}">{row['status']}</span>
+                {kat_badge} {tipe_badge}
+            </div>
+            <div class="card-section">Deskripsi Isu</div>
+            <div class="card-body">{deskripsi}</div>
+            <div class="card-section">Dampak Isu</div>
+            <div class="card-body">{dampak}</div>
+            <div class="card-section">Aktivitas Pencegahan yang Dapat Dilakukan</div>
+            <div class="card-body" style="font-weight: 600;">{pencegahan}</div>
+            <div class="card-section">Tantangan yang Mungkin Dihadapi</div>
+            <div class="card-body">{tantangan}</div>
+            {gdrive_html}
+        </div>"""
     st.markdown(card_html, unsafe_allow_html=True)
 
-def render_empty_state(title="Knowledge Repository", subtitle="No entries available.<br>Create your first knowledge entry to start building organizational memory."):
+def render_empty_state(title="Lessons Learned Register", subtitle="Belum ada data yang tersimpan.<br>Buat entri pertama Anda untuk mulai membangun basis data organisasi."):
     st.markdown(f"""<div class="bento" style="text-align: center; padding: 80px 40px;"><div class="section-title" style="margin-bottom: 16px; font-size: 32px;">{title}</div><div class="card-body" style="color: var(--text-secondary);">{subtitle}</div></div>""", unsafe_allow_html=True)
 
 # ==============================================================================
 # 7. PAGE VIEWS
 # ==============================================================================
 def view_dashboard(repo):
-    st.markdown("""<div class="hero-text">PT Bukit Asam<br>Knowledge<br>Management</div><div class="hero-sub">Capture organizational knowledge and transform operational experience into strategic assets.</div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="hero-text">PT Bukit Asam<br>Lessons<br>Learned</div><div class="hero-sub">Register and transform operational challenges into organizational strategic assets.</div>""", unsafe_allow_html=True)
     df = repo.fetch_all()
     if df.empty:
         render_empty_state()
         return
     left, right = st.columns([2.2, 1])
-    with left: render_big_kpi("Total Knowledge Base", len(df))
+    with left: render_big_kpi("Total Register Data", len(df))
     with right:
         verified_rate = int((len(df[df['status'] == 'Verified']) / len(df)) * 100) if len(df) > 0 else 0
-        render_small_kpi("Verified", f"{verified_rate}%")
-        render_small_kpi("High Impact", len(df[df['impact'] == 'High']))
+        render_small_kpi("Verified Data", f"{verified_rate}%")
+        
     st.write("")
     c1, c2 = st.columns([1, 1])
     with c1:
         with st.container(border=True):
-            st.markdown("<div class='card-title' style='font-size: 20px;'>Status Distribution</div>", unsafe_allow_html=True)
+            st.markdown("<div class='card-title' style='font-size: 20px;'>Status Distribusi</div>", unsafe_allow_html=True)
             fig1 = px.pie(df, names="status", hole=0.8, color="status", color_discrete_map={'Verified': '#8CC8A4', 'Pending Review': '#A0AEB8', 'Needs Revision': '#E5B96E', 'Rejected': '#D98080'})
             fig1.update_layout(showlegend=False, height=300, margin=dict(t=10, b=10, l=10, r=10))
             st.plotly_chart(fig1, use_container_width=True)
     with c2:
         with st.container(border=True):
-            st.markdown("<div class='card-title' style='font-size: 20px;'>Impact Analysis</div>", unsafe_allow_html=True)
-            fig2 = px.histogram(df, x="impact", color="impact", color_discrete_map={'High': '#D98080', 'Medium': '#E5B96E', 'Low': '#A0AEB8'})
+            st.markdown("<div class='card-title' style='font-size: 20px;'>Distribusi per Divisi</div>", unsafe_allow_html=True)
+            fig2 = px.histogram(df, y="tipe", color="tipe") # Berubah menjadi visualisasi per tipe/divisi
             fig2.update_layout(showlegend=False, xaxis_title="", yaxis_title="", height=300, margin=dict(t=10, b=10, l=10, r=10))
             st.plotly_chart(fig2, use_container_width=True)
 
 def view_browse(repo):
-    st.markdown("<div class='section-title'>Browse Repository</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>Browse Lessons Learned</div>", unsafe_allow_html=True)
     compact_mode = st.toggle("Enable Compact View", value=True)
     df = repo.fetch_all()
-    search_query = st.text_input("Search", placeholder="Search title, project or keyword...", label_visibility="collapsed")
+    search_query = st.text_input("Search", placeholder="Cari nama proyek, masalah, atau divisi...", label_visibility="collapsed")
     if search_query: df = df[df.astype(str).apply(lambda x: x.str.contains(search_query, case=False, na=False)).any(axis=1)]
     st.write("")
     if df.empty: render_empty_state()
@@ -407,28 +478,26 @@ def view_browse(repo):
         for _, row in df.iterrows(): render_knowledge_card(row, compact=compact_mode)
 
 def view_upload(repo):
-    st.markdown("<div class='section-title'>New Knowledge Entry</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>Lessons Learned Register Project</div>", unsafe_allow_html=True)
     
-    if 'save_success' not in st.session_state:
-        st.session_state.save_success = False
-        
-    if 'ai_summary' not in st.session_state: st.session_state.ai_summary = ""
-    if 'ai_root' not in st.session_state: st.session_state.ai_root = ""
-    if 'ai_rec' not in st.session_state: st.session_state.ai_rec = ""
+    if 'save_success' not in st.session_state: st.session_state.save_success = False
+    if 'ai_deskripsi' not in st.session_state: st.session_state.ai_deskripsi = ""
+    if 'ai_dampak' not in st.session_state: st.session_state.ai_dampak = ""
+    if 'ai_pencegahan' not in st.session_state: st.session_state.ai_pencegahan = ""
+    if 'ai_tantangan' not in st.session_state: st.session_state.ai_tantangan = ""
     if 'uploaded_file_bytes' not in st.session_state: st.session_state.uploaded_file_bytes = None
     if 'uploaded_filename' not in st.session_state: st.session_state.uploaded_filename = ""
     
     if st.session_state.save_success:
-        st.success("✅ HORE! Dokumen berhasil disimpan ke Database! Form di bawah telah otomatis dikosongkan.")
-        st.toast("Data Tersimpan!", icon="✅")
+        st.success("✅ HORE! Dokumen Register berhasil disimpan ke Database!")
         st.session_state.save_success = False
         
     with st.container(border=True):
-        st.markdown("<div class='card-title' style='font-size: 20px; margin-bottom: 16px;'>Gemini AI Document Parsing & Auto-Upload</div>", unsafe_allow_html=True)
-        uploaded_file = st.file_uploader("Format: PDF, DOCX, TXT", type=["pdf", "txt", "docx"], label_visibility="collapsed")
+        st.markdown("<div class='card-title' style='font-size: 20px; margin-bottom: 16px;'>Gemini AI Document Extraction</div>", unsafe_allow_html=True)
+        uploaded_file = st.file_uploader("Upload lampiran atau laporan pendukung (Format: PDF, DOCX, TXT)", type=["pdf", "txt", "docx"], label_visibility="collapsed")
         
-        if uploaded_file and st.button("Analyze with Gemini AI"):
-            with st.spinner("Gemini is reading and analyzing your document..."):
+        if uploaded_file and st.button("Extract Data with Gemini AI"):
+            with st.spinner("Gemini sedang membaca dan menyusun laporan ke dalam 4 format tabel..."):
                 file_bytes = io.BytesIO(uploaded_file.read())
                 st.session_state.uploaded_file_bytes = file_bytes
                 st.session_state.uploaded_filename = uploaded_file.name
@@ -436,146 +505,127 @@ def view_upload(repo):
                 raw_text = parse_document(file_bytes, uploaded_file.name)
                 if raw_text:
                     ai_result = extract_knowledge(raw_text)
-                    st.session_state.ai_summary = ai_result["summary"]
-                    st.session_state.ai_root = ai_result["root_cause"]
-                    st.session_state.ai_rec = ai_result["recommendation"]
-                    
-                    if "GEMINI_API_KEY" in st.secrets:
-                        st.toast("Gemini AI berhasil meringkas dokumen!", icon="✨")
-                    else:
-                        st.toast("Ekstraksi kata kunci berhasil! (Mode Offline)", icon="🔍")
+                    st.session_state.ai_deskripsi = ai_result["deskripsi_isu"]
+                    st.session_state.ai_dampak = ai_result["dampak_isu"]
+                    st.session_state.ai_pencegahan = ai_result["aktivitas_pencegahan"]
+                    st.session_state.ai_tantangan = ai_result["tantangan"]
                     st.rerun() 
                 else:
-                    st.error("Buku/Dokumen tidak bisa diekstrak teksnya (Mungkin berisi gambar scan).")
+                    st.error("Teks tidak dapat diekstrak dari dokumen tersebut.")
     st.write("")
     
     with st.container(border=True):
         with st.form("entry_form", border=False, clear_on_submit=True):
-            title = st.text_input("Title", placeholder="Entry Title")
+            nama_proyek = st.text_input("Nama Proyek", placeholder="Contoh: Pembangunan Sistem X...")
+            manajer_proyek = st.text_input("Manajer Proyek", placeholder="Nama PM...")
+            
             c1, c2 = st.columns(2)
             with c1:
-                project = st.text_input("Project", placeholder="Project Name")
-                division = st.selectbox("Divisi / Kategori", DIVISION_OPTIONS)
+                kategori = st.selectbox("Kategori", KATEGORI_OPTIONS)
             with c2:
-                uploader = st.text_input("Uploader", placeholder="Your Name")
-                impact = st.selectbox("Impact", IMPACT_LEVELS)
+                # SEKARANG MENGGUNAKAN DROPDOWN AGAR SESUAI DENGAN NAMA FOLDER DRIVE
+                tipe = st.selectbox("Tipe / Divisi (Folder Tujuan)", TIPE_DIVISI_OPTIONS)
                 
-            summary = st.text_area("Summary", value=st.session_state.ai_summary, placeholder="Brief description...", height=120)
-            root_cause = st.text_area("Root Cause", value=st.session_state.ai_root, placeholder="Underlying issue...", height=120)
-            recommendation = st.text_area("Recommendation", value=st.session_state.ai_rec, placeholder="Action plan...", height=120)
-            st.write("")
+            deskripsi_isu = st.text_area("Deskripsi Isu", value=st.session_state.ai_deskripsi, placeholder="Tuliskan isu utama...", height=100)
+            dampak_isu = st.text_area("Dampak Isu", value=st.session_state.ai_dampak, placeholder="Dampak yang dirasakan...", height=100)
+            aktivitas_pencegahan = st.text_area("Aktivitas Pencegahan yang Dapat Dilakukan", value=st.session_state.ai_pencegahan, placeholder="Solusi / mitigasi...", height=100)
+            tantangan = st.text_area("Tantangan yang Mungkin Dihadapi", value=st.session_state.ai_tantangan, placeholder="Risiko lanjutan...", height=100)
             
-            submitted = st.form_submit_button("Save Entry")
+            st.write("")
+            submitted = st.form_submit_button("Simpan Register")
             
             if submitted:
-                if title and summary:
+                if nama_proyek and deskripsi_isu:
                     auto_gdrive_link = ""
                     if st.session_state.uploaded_file_bytes:
-                        if GDRIVE_AVAILABLE and ("gcp_service_account" in st.secrets or os.path.exists(GDRIVE_CREDENTIALS_FILE)):
-                            with st.spinner("Mengunggah dokumen asli ke Google Drive..."):
-                                target_folder_id = DIVISION_FOLDERS.get(division, DIVISION_FOLDERS["Lainnya"])
+                        if GDRIVE_AVAILABLE and "gcp_service_account" in st.secrets:
+                            with st.spinner(f"Mengunggah dokumen ke Folder GDrive Divisi {tipe}..."):
+                                # MENGARAHKAN FOLDER BERDASARKAN INPUT TIPE/DIVISI (Bukan Kategori)
+                                target_folder_id = DIVISION_FOLDERS.get(tipe, DIVISION_FOLDERS["Lainnya"])
                                 link = upload_to_gdrive(st.session_state.uploaded_file_bytes, st.session_state.uploaded_filename, target_folder_id)
                                 if link: auto_gdrive_link = link
-                        else:
-                            st.warning("Google Drive API belum dikonfigurasi.")
 
                     data = {
-                        "title": title, "project": project, "impact": impact, "summary": summary, 
-                        "root_cause": root_cause, "recommendation": recommendation, "uploader": uploader,
-                        "gdrive_link": auto_gdrive_link, "division": division
+                        "nama_proyek": nama_proyek, "manajer_proyek": manajer_proyek, 
+                        "kategori": kategori, "tipe": tipe, 
+                        "deskripsi_isu": deskripsi_isu, "dampak_isu": dampak_isu, 
+                        "aktivitas_pencegahan": aktivitas_pencegahan, "tantangan": tantangan,
+                        "gdrive_link": auto_gdrive_link
                     }
                     
                     if repo.insert(data):
-                        st.session_state.ai_summary = ""
-                        st.session_state.ai_root = ""
-                        st.session_state.ai_rec = ""
+                        st.session_state.ai_deskripsi = ""
+                        st.session_state.ai_dampak = ""
+                        st.session_state.ai_pencegahan = ""
+                        st.session_state.ai_tantangan = ""
                         st.session_state.uploaded_file_bytes = None
                         st.session_state.uploaded_filename = ""
                         
                         st.session_state.save_success = True
                         st.rerun()
                     else:
-                        st.error("❌ DATABASE ERROR: Data GAGAL disimpan. Hapus file 'km_enterprise.db' dan coba lagi.")
+                        st.error("❌ Gagal menyimpan ke Database.")
                 else:
-                    st.error("Title dan Summary wajib diisi!")
+                    st.error("Nama Proyek dan Deskripsi Isu wajib diisi!")
 
 def view_revision(repo):
     st.markdown("<div class='section-title'>Revision Desk</div>", unsafe_allow_html=True)
     df = repo.fetch_all()
     rev_df = df[df['status'] == 'Needs Revision']
     if rev_df.empty:
-        render_empty_state("Clean Workspace", "No documents require your revision. Great job!")
+        render_empty_state("Meja Kerja Bersih", "Tidak ada dokumen yang membutuhkan revisi.")
         return
 
     for _, row in rev_df.iterrows():
         rid = row['id']
-        if f'rev_sum_{rid}' not in st.session_state: st.session_state[f'rev_sum_{rid}'] = row['summary']
-        if f'rev_root_{rid}' not in st.session_state: st.session_state[f'rev_root_{rid}'] = row['root_cause']
-        if f'rev_rec_{rid}' not in st.session_state: st.session_state[f'rev_rec_{rid}'] = row['recommendation']
-        if f'rev_file_{rid}' not in st.session_state: st.session_state[f'rev_file_{rid}'] = None
-        if f'rev_filename_{rid}' not in st.session_state: st.session_state[f'rev_filename_{rid}'] = ""
+        if f'rev_desc_{rid}' not in st.session_state: st.session_state[f'rev_desc_{rid}'] = row['deskripsi_isu']
+        if f'rev_dampak_{rid}' not in st.session_state: st.session_state[f'rev_dampak_{rid}'] = row['dampak_isu']
+        if f'rev_prev_{rid}' not in st.session_state: st.session_state[f'rev_prev_{rid}'] = row['aktivitas_pencegahan']
+        if f'rev_tant_{rid}' not in st.session_state: st.session_state[f'rev_tant_{rid}'] = row['tantangan']
 
         with st.container(border=True):
-            st.markdown(f"<div class='card-title' style='font-size: 24px;'>{row['title']}</div>", unsafe_allow_html=True)
-            st.markdown(f"""<div style="background-color: var(--sem-yellow-bg); border-left: 4px solid var(--sem-yellow-text); padding: 16px 20px; border-radius: 12px; margin-bottom: 24px; margin-top: 12px;"><div style="font-weight: 700; color: var(--sem-yellow-text); margin-bottom: 4px; font-size: 13px; text-transform: uppercase;">PMO Feedback</div><div style="color: var(--text-primary); font-size: 15px; line-height: 1.5;">{row['reviewer_notes']}</div></div>""", unsafe_allow_html=True)
+            st.markdown(f"<div class='card-title' style='font-size: 24px;'>{row['nama_proyek']}</div>", unsafe_allow_html=True)
+            st.markdown(f"""<div style="background-color: var(--sem-yellow-bg); border-left: 4px solid var(--sem-yellow-text); padding: 16px 20px; border-radius: 12px; margin-bottom: 24px; margin-top: 12px;"><div style="font-weight: 700; color: var(--sem-yellow-text); margin-bottom: 4px; font-size: 13px; text-transform: uppercase;">Reviewer Notes</div><div style="color: var(--text-primary); font-size: 15px; line-height: 1.5;">{row['reviewer_notes']}</div></div>""", unsafe_allow_html=True)
             
-            uploaded_rev = st.file_uploader("Upload Revisi Dokumen", type=["pdf", "txt", "docx"], key=f"up_rev_{rid}")
-            if uploaded_rev and st.button("Extract Revised Knowledge (Gemini)", key=f"btn_rev_{rid}"):
-                with st.spinner("Gemini AI is Extracting..."):
-                    file_bytes = io.BytesIO(uploaded_rev.read())
-                    st.session_state[f'rev_file_{rid}'] = file_bytes
-                    st.session_state[f'rev_filename_{rid}'] = uploaded_rev.name
-                    raw_text = parse_document(file_bytes, uploaded_rev.name)
-                    if raw_text:
-                        ai_result = extract_knowledge(raw_text)
-                        st.session_state[f'rev_sum_{rid}'] = ai_result["summary"]
-                        st.session_state[f'rev_root_{rid}'] = ai_result["root_cause"]
-                        st.session_state[f'rev_rec_{rid}'] = ai_result["recommendation"]
-                        st.rerun()
-            
-            st.write("")
             with st.form(f"form_rev_{rid}", border=False):
-                title = st.text_input("Title", value=row['title'])
+                nama_proyek = st.text_input("Nama Proyek", value=row['nama_proyek'])
+                manajer_proyek = st.text_input("Manajer Proyek", value=row['manajer_proyek'])
                 c1, c2 = st.columns(2)
                 with c1:
-                    project = st.text_input("Project", value=row['project'])
-                    div_idx = DIVISION_OPTIONS.index(row.get('division', 'Lainnya')) if row.get('division', 'Lainnya') in DIVISION_OPTIONS else len(DIVISION_OPTIONS)-1
-                    division = st.selectbox("Divisi / Kategori", DIVISION_OPTIONS, index=div_idx)
+                    kat_idx = KATEGORI_OPTIONS.index(row['kategori']) if row['kategori'] in KATEGORI_OPTIONS else 0
+                    kategori = st.selectbox("Kategori", KATEGORI_OPTIONS, index=kat_idx)
                 with c2:
-                    imp_idx = IMPACT_LEVELS.index(row['impact']) if row['impact'] in IMPACT_LEVELS else 0
-                    impact = st.selectbox("Impact", IMPACT_LEVELS, index=imp_idx)
+                    # Menyesuaikan form revisi dengan dropdown divisi
+                    tipe_idx = TIPE_DIVISI_OPTIONS.index(row['tipe']) if row['tipe'] in TIPE_DIVISI_OPTIONS else (len(TIPE_DIVISI_OPTIONS)-1)
+                    tipe = st.selectbox("Tipe / Divisi", TIPE_DIVISI_OPTIONS, index=tipe_idx)
                     
-                summary = st.text_area("Summary", value=st.session_state[f'rev_sum_{rid}'], height=120)
-                root_cause = st.text_area("Root Cause", value=st.session_state[f'rev_root_{rid}'], height=120)
-                recommendation = st.text_area("Recommendation", value=st.session_state[f'rev_rec_{rid}'], height=120)
+                deskripsi_isu = st.text_area("Deskripsi Isu", value=st.session_state[f'rev_desc_{rid}'], height=100)
+                dampak_isu = st.text_area("Dampak Isu", value=st.session_state[f'rev_dampak_{rid}'], height=100)
+                aktivitas_pencegahan = st.text_area("Aktivitas Pencegahan", value=st.session_state[f'rev_prev_{rid}'], height=100)
+                tantangan = st.text_area("Tantangan", value=st.session_state[f'rev_tant_{rid}'], height=100)
                 
                 st.write("")
                 if st.form_submit_button("Resubmit for Review"):
-                    new_gdrive_link = row['gdrive_link']
-                    if st.session_state[f'rev_file_{rid}']:
-                        if GDRIVE_AVAILABLE and ("gcp_service_account" in st.secrets or os.path.exists(GDRIVE_CREDENTIALS_FILE)):
-                            target_folder_id = DIVISION_FOLDERS.get(division, DIVISION_FOLDERS["Lainnya"])
-                            link = upload_to_gdrive(st.session_state[f'rev_file_{rid}'], st.session_state[f'rev_filename_{rid}'], target_folder_id)
-                            if link: new_gdrive_link = link
-                    
-                    data = {'title': title, 'project': project, 'impact': impact, 'summary': summary, 'root_cause': root_cause, 'recommendation': recommendation, 'gdrive_link': new_gdrive_link, 'division': division}
+                    data = {
+                        'nama_proyek': nama_proyek, 'manajer_proyek': manajer_proyek, 'kategori': kategori, 'tipe': tipe, 
+                        'deskripsi_isu': deskripsi_isu, 'dampak_isu': dampak_isu, 'aktivitas_pencegahan': aktivitas_pencegahan, 
+                        'tantangan': tantangan, 'gdrive_link': row['gdrive_link']
+                    }
                     if repo.resubmit_record(rid, data):
-                        for key in [f'rev_sum_{rid}', f'rev_root_{rid}', f'rev_rec_{rid}', f'rev_file_{rid}', f'rev_filename_{rid}']:
-                            if key in st.session_state: del st.session_state[key]
                         st.rerun()
 
 def view_approval(repo):
-    st.markdown("<div class='section-title'>Knowledge Review</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>Review & Approval</div>", unsafe_allow_html=True)
     compact_mode = st.toggle("Enable Compact View", value=True)
     df = repo.fetch_all()
     pending_df = df[df['status'] == 'Pending Review']
     if pending_df.empty:
-        render_empty_state("Inbox Zero", "No pending reviews. Workspace is clear.")
+        render_empty_state("Inbox Kosong", "Semua register telah direview.")
         return
     for _, row in pending_df.iterrows():
         render_knowledge_card(row, compact=compact_mode)
         with st.container(border=True):
-            notes = st.text_area("PMO Feedback (Required if returning for revision)", key=f"note_{row['id']}")
+            notes = st.text_area("Catatan Reviewer (Wajib diisi jika revisi)", key=f"note_{row['id']}")
             c1, c2, c3, c4 = st.columns(4)
             with c1:
                 if st.button("Delete", key=f"del_{row['id']}"): repo.delete_record(row['id']); st.rerun()
@@ -591,33 +641,33 @@ def view_export(repo):
     df = repo.fetch_all()
     if df.empty: return render_empty_state()
     with st.container(border=True):
-        st.markdown("<div class='card-title' style='font-size: 24px; margin-bottom: 32px;'>Export Knowledge Base</div>", unsafe_allow_html=True)
+        st.markdown("<div class='card-title' style='font-size: 24px; margin-bottom: 32px;'>Export Lessons Learned Register</div>", unsafe_allow_html=True)
         c1, c2 = st.columns(2)
         with c1:
-            st.download_button(label="Download CSV", data=df.to_csv(index=False).encode("utf-8-sig"), file_name=f"PTBA_KM_{datetime.now().strftime('%Y%m%d')}.csv", mime="text/csv")
+            st.download_button(label="Download CSV", data=df.to_csv(index=False).encode("utf-8-sig"), file_name=f"PTBA_Lessons_Learned_{datetime.now().strftime('%Y%m%d')}.csv", mime="text/csv")
         with c2:
             try:
                 output = io.BytesIO()
-                with pd.ExcelWriter(output, engine="openpyxl") as writer: df.to_excel(writer, index=False, sheet_name="Knowledge")
-                st.download_button(label="Download Excel", data=output.getvalue(), file_name=f"PTBA_KM.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-            except Exception: st.markdown("<div style='text-align: center; font-size: 14px;'>Requires 'openpyxl'</div>", unsafe_allow_html=True)
+                with pd.ExcelWriter(output, engine="openpyxl") as writer: df.to_excel(writer, index=False, sheet_name="Register")
+                st.download_button(label="Download Excel", data=output.getvalue(), file_name=f"PTBA_Lessons_Learned.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            except Exception: st.markdown("<div style='text-align: center; font-size: 14px;'>Membutuhkan library 'openpyxl'</div>", unsafe_allow_html=True)
 
 # ==============================================================================
 # 8. MAIN
 # ==============================================================================
 def main():
-    st.set_page_config(page_title="PTBA KM", layout="wide", initial_sidebar_state="expanded")
+    st.set_page_config(page_title="PTBA Lessons Learned", layout="wide", initial_sidebar_state="expanded")
     create_apple_theme()
     inject_enterprise_css()
     repo = get_repository()
 
     with st.sidebar:
-        st.markdown("<div style='font-size: 14px; font-weight: 800; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 24px;'>PT BUKIT ASAM KM</div>", unsafe_allow_html=True)
-        navigation = st.radio("Nav", ["Dashboard", "Browse", "New Entry", "Revision Desk", "Approval", "Export"], label_visibility="collapsed")
+        st.markdown("<div style='font-size: 14px; font-weight: 800; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 24px;'>PT BUKIT ASAM</div>", unsafe_allow_html=True)
+        navigation = st.radio("Nav", ["Dashboard", "Browse", "New Register", "Revision Desk", "Approval", "Export"], label_visibility="collapsed")
         
     if navigation == "Dashboard": view_dashboard(repo)
     elif navigation == "Browse": view_browse(repo)
-    elif navigation == "New Entry": view_upload(repo)
+    elif navigation == "New Register": view_upload(repo)
     elif navigation == "Revision Desk": view_revision(repo)
     elif navigation == "Approval": view_approval(repo)
     elif navigation == "Export": view_export(repo)
