@@ -440,7 +440,7 @@ def render_empty_state(title="Lessons Learned Register", subtitle="Belum ada dat
 # 7. PAGE VIEWS
 # ==============================================================================
 def view_dashboard(repo):
-    st.markdown("""<div class="hero-text">PT Bukit Asam<br>Lessons<br>Learned</div><div class="hero-sub">Register and transform operational challenges into organizational strategic assets.</div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="hero-text">PT Bukit Asam<br>Lessons Learned</div><div class="hero-sub">Register and transform operational challenges into organizational strategic assets.</div>""", unsafe_allow_html=True)
     df = repo.fetch_all()
     if df.empty:
         render_empty_state()
