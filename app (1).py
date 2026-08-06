@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 PT Bukit Asam Knowledge Management System
-Architecture: Object-Oriented, Auto GDrive Integration, Dynamic Routing, GEMINI AI INTEGRATION
+Architecture: Object-Oriented, Auto GDrive Integration, Dynamic Routing, GEMINI AI INTEGRATION, RBAC Login
 Format: Lessons Learned Register
 """
 
@@ -55,6 +55,13 @@ except ImportError:
 # 2. CORE CONFIGURATION
 # ==============================================================================
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "km_enterprise.db")
+
+# DUMMY USERS DATABASE (Untuk produksi, pindahkan ke tabel SQLite atau st.secrets)
+USER_CREDENTIALS = {
+    "pm_user": {"password": "password123", "role": "Uploader"},
+    "pmo_reviewer": {"password": "password123", "role": "Reviewer"},
+    "guest": {"password": "password123", "role": "Viewer"}
+}
 
 # MAPPING FOLDER G-DRIVE BERDASARKAN TIPE / DIVISI
 # Ganti dengan ID Folder masing-masing divisi yang sudah di-share ke email Service Account
@@ -439,6 +446,31 @@ def render_empty_state(title="Lessons Learned Register", subtitle="Belum ada dat
 # ==============================================================================
 # 7. PAGE VIEWS
 # ==============================================================================
+def view_login():
+    st.markdown("""
+        <div style="text-align: center; margin-top: 50px;">
+            <div class="hero-text" style="font-size: 64px; margin-bottom: 10px;">Login Access</div>
+            <div class="hero-sub" style="margin-bottom: 40px; margin-left: auto; margin-right: auto;">Silakan masuk untuk mengakses PTBA Lessons Learned Register</div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 1.5, 1])
+    with col2:
+        with st.container(border=True):
+            username = st.text_input("Username", placeholder="Masukkan username...")
+            password = st.text_input("Password", type="password", placeholder="Masukkan password...")
+            
+            st.write("")
+            if st.button("Login"):
+                user = USER_CREDENTIALS.get(username)
+                if user and user["password"] == password:
+                    st.session_state.logged_in = True
+                    st.session_state.username = username
+                    st.session_state.role = user["role"]
+                    st.rerun()
+                else:
+                    st.error("Username atau Password salah!")
+
 def view_dashboard(repo):
     st.markdown("""<div class="hero-text">PT Bukit Asam<br>Lessons Learned</div><div class="hero-sub">Register and transform operational challenges into organizational strategic assets.</div>""", unsafe_allow_html=True)
     df = repo.fetch_all()
@@ -462,7 +494,7 @@ def view_dashboard(repo):
     with c2:
         with st.container(border=True):
             st.markdown("<div class='card-title' style='font-size: 20px;'>Distribusi per Divisi</div>", unsafe_allow_html=True)
-            fig2 = px.histogram(df, y="tipe", color="tipe") # Berubah menjadi visualisasi per tipe/divisi
+            fig2 = px.histogram(df, y="tipe", color="tipe") 
             fig2.update_layout(showlegend=False, xaxis_title="", yaxis_title="", height=300, margin=dict(t=10, b=10, l=10, r=10))
             st.plotly_chart(fig2, use_container_width=True)
 
@@ -523,7 +555,6 @@ def view_upload(repo):
             with c1:
                 kategori = st.selectbox("Kategori", KATEGORI_OPTIONS)
             with c2:
-                # SEKARANG MENGGUNAKAN DROPDOWN AGAR SESUAI DENGAN NAMA FOLDER DRIVE
                 tipe = st.selectbox("Tipe / Divisi (Folder Tujuan)", TIPE_DIVISI_OPTIONS)
                 
             deskripsi_isu = st.text_area("Deskripsi Isu", value=st.session_state.ai_deskripsi, placeholder="Tuliskan isu utama...", height=100)
@@ -540,7 +571,6 @@ def view_upload(repo):
                     if st.session_state.uploaded_file_bytes:
                         if GDRIVE_AVAILABLE and "gcp_service_account" in st.secrets:
                             with st.spinner(f"Mengunggah dokumen ke Folder GDrive Divisi {tipe}..."):
-                                # MENGARAHKAN FOLDER BERDASARKAN INPUT TIPE/DIVISI (Bukan Kategori)
                                 target_folder_id = DIVISION_FOLDERS.get(tipe, DIVISION_FOLDERS["Lainnya"])
                                 link = upload_to_gdrive(st.session_state.uploaded_file_bytes, st.session_state.uploaded_filename, target_folder_id)
                                 if link: auto_gdrive_link = link
@@ -595,7 +625,6 @@ def view_revision(repo):
                     kat_idx = KATEGORI_OPTIONS.index(row['kategori']) if row['kategori'] in KATEGORI_OPTIONS else 0
                     kategori = st.selectbox("Kategori", KATEGORI_OPTIONS, index=kat_idx)
                 with c2:
-                    # Menyesuaikan form revisi dengan dropdown divisi
                     tipe_idx = TIPE_DIVISI_OPTIONS.index(row['tipe']) if row['tipe'] in TIPE_DIVISI_OPTIONS else (len(TIPE_DIVISI_OPTIONS)-1)
                     tipe = st.selectbox("Tipe / Divisi", TIPE_DIVISI_OPTIONS, index=tipe_idx)
                     
@@ -653,7 +682,7 @@ def view_export(repo):
             except Exception: st.markdown("<div style='text-align: center; font-size: 14px;'>Membutuhkan library 'openpyxl'</div>", unsafe_allow_html=True)
 
 # ==============================================================================
-# 8. MAIN
+# 8. MAIN & ROUTING
 # ==============================================================================
 def main():
     st.set_page_config(page_title="PTBA Lessons Learned", layout="wide", initial_sidebar_state="expanded")
@@ -661,16 +690,51 @@ def main():
     inject_enterprise_css()
     repo = get_repository()
 
+    # 1. Inisialisasi Session State untuk Login
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
+        st.session_state.role = None
+        st.session_state.username = None
+
+    # 2. Cek Status Login
+    if not st.session_state.logged_in:
+        view_login()
+        return
+
+    # 3. Pengaturan Navigasi berdasarkan Role (RBAC)
+    role = st.session_state.role
+    
+    # Akses Dasar (Viewer)
+    allowed_pages = ["Dashboard", "Browse"] 
+    
+    # Tambahan Akses Uploader
+    if role == "Uploader":
+        allowed_pages.extend(["New Register", "Revision Desk"])
+    # Tambahan Akses Reviewer
+    elif role == "Reviewer":
+        allowed_pages.extend(["Approval", "Export"])
+
     with st.sidebar:
-        st.markdown("<div style='font-size: 14px; font-weight: 800; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 24px;'>PT BUKIT ASAM</div>", unsafe_allow_html=True)
-        navigation = st.radio("Nav", ["Dashboard", "Browse", "New Register", "Revision Desk", "Approval", "Export"], label_visibility="collapsed")
+        st.markdown("<div style='font-size: 14px; font-weight: 800; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 4px;'>PT BUKIT ASAM</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size: 13px; font-weight: 500; color: var(--accent-blue); margin-bottom: 24px; padding: 8px; background: rgba(107, 163, 206, 0.1); border-radius: 8px;'>👤 {st.session_state.username} <br>🛡️ <b>{role}</b></div>", unsafe_allow_html=True)
         
+        navigation = st.radio("Nav", allowed_pages, label_visibility="collapsed")
+        
+        st.write("")
+        st.write("")
+        if st.button("Logout"):
+            st.session_state.logged_in = False
+            st.session_state.role = None
+            st.session_state.username = None
+            st.rerun()
+            
+    # 4. Routing Halaman
     if navigation == "Dashboard": view_dashboard(repo)
     elif navigation == "Browse": view_browse(repo)
-    elif navigation == "New Register": view_upload(repo)
-    elif navigation == "Revision Desk": view_revision(repo)
-    elif navigation == "Approval": view_approval(repo)
-    elif navigation == "Export": view_export(repo)
+    elif navigation == "New Register" and role == "Uploader": view_upload(repo)
+    elif navigation == "Revision Desk" and role == "Uploader": view_revision(repo)
+    elif navigation == "Approval" and role == "Reviewer": view_approval(repo)
+    elif navigation == "Export" and role == "Reviewer": view_export(repo)
 
 if __name__ == "__main__":
     main()
