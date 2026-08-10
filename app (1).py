@@ -64,7 +64,6 @@ USER_CREDENTIALS = {
 }
 
 # MAPPING FOLDER G-DRIVE BERDASARKAN TIPE / DIVISI
-# Ganti dengan ID Folder masing-masing divisi yang sudah di-share ke email Service Account
 DIVISION_FOLDERS = {
     "Human Resources (HR)": "14Q949Rt_UNyEKYenuneBZXlgzznUMOnY",
     "Information Technology (IT)": "1-bPwqpCeY4yRtdGpzfZ4UmjmQKSTk7AV",
@@ -232,7 +231,6 @@ def get_repository():
 # 5. AI GENERATIVE ENGINE (GEMINI INTEGRATION)
 # ==============================================================================
 def parse_document(file_bytes, filename) -> str:
-    """Membaca file dan mengekstrak teks kasarnya"""
     if not file_bytes: return ""
     try:
         filename = filename.lower()
@@ -250,7 +248,6 @@ def parse_document(file_bytes, filename) -> str:
     return ""
 
 def extract_knowledge(text: str) -> dict:
-    """Menganalisis teks ke dalam format Lessons Learned menggunakan Gemini AI"""
     res = {"deskripsi_isu": "", "dampak_isu": "", "aktivitas_pencegahan": "", "tantangan": ""}
     if not text: return res
 
@@ -262,38 +259,31 @@ def extract_knowledge(text: str) -> dict:
             prompt = f"""
             Anda adalah analis Lessons Learned Register profesional di industri pertambangan/enterprise.
             Baca teks laporan di bawah ini dan rangkum menjadi 4 bagian spesifik.
-            
-            WAJIB balas HANYA dengan format JSON persis seperti ini (tanpa tambahan teks apa pun):
+            WAJIB balas HANYA dengan format JSON persis seperti ini:
             {{
                 "deskripsi_isu": "Jelaskan masalah utama yang terjadi secara ringkas...",
-                "dampak_isu": "Jelaskan apa akibat dari masalah tersebut terhadap operasional/proyek...",
-                "aktivitas_pencegahan": "Jelaskan tindakan korektif atau solusi yang direkomendasikan...",
-                "tantangan": "Jelaskan kemungkinan risiko atau hambatan saat menerapkan solusi tersebut..."
+                "dampak_isu": "Jelaskan apa akibat dari masalah tersebut...",
+                "aktivitas_pencegahan": "Jelaskan tindakan korektif atau solusi...",
+                "tantangan": "Jelaskan kemungkinan risiko atau hambatan..."
             }}
-
             TEKS DOKUMEN:
             {text[:15000]} 
             """
             response = model.generate_content(prompt)
-            
             clean_text = response.text.strip()
             if clean_text.startswith("```json"): clean_text = clean_text[7:]
             elif clean_text.startswith("```"): clean_text = clean_text[3:]
             if clean_text.endswith("```"): clean_text = clean_text[:-3]
-            clean_text = clean_text.strip()
-            
-            ai_data = json.loads(clean_text)
+            ai_data = json.loads(clean_text.strip())
             
             res["deskripsi_isu"] = ai_data.get("deskripsi_isu", "")
             res["dampak_isu"] = ai_data.get("dampak_isu", "")
             res["aktivitas_pencegahan"] = ai_data.get("aktivitas_pencegahan", "")
             res["tantangan"] = ai_data.get("tantangan", "")
             return res
-            
         except Exception as e:
             st.error(f"❌ GEMINI GAGAL: {e}")
             
-    # Metode Fallback (Keyword Sederhana)
     sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if len(s) > 15]
     def extract_by_keywords(kw_list):
         matched = [s for s in sentences if any(kw in s.lower() for kw in kw_list)]
@@ -331,11 +321,36 @@ def inject_enterprise_css():
     .hero-sub { font-size: 20px; font-weight: 500; color: var(--text-secondary); margin-bottom: 80px; max-width: 600px; line-height: 1.5; }
     .bento, [data-testid="stVerticalBlockBorderWrapper"] { background-color: var(--surface) !important; border-radius: 32px !important; padding: 32px !important; border: 1px solid var(--border) !important; box-shadow: 0 10px 30px rgba(107, 163, 206, 0.04) !important; transition: transform .35s, box-shadow .35s !important; height: 100%; }
     .bento:hover, [data-testid="stVerticalBlockBorderWrapper"]:hover { transform: translateY(-6px) !important; box-shadow: 0 35px 60px rgba(107, 163, 206, 0.08) !important; }
+    
+    /* MODIFIKASI TAMPILAN ACCORDION BROWSE & APPROVAL */
+    [data-testid="stExpander"] {
+        background-color: var(--surface) !important;
+        border-radius: 12px !important;
+        border: 1px solid var(--border) !important;
+        box-shadow: 0 4px 12px rgba(107, 163, 206, 0.05) !important;
+        margin-bottom: 12px;
+        overflow: hidden;
+    }
+    [data-testid="stExpander"] summary {
+        font-weight: 700 !important;
+        font-size: 16px !important;
+        color: var(--text-primary) !important;
+        padding: 16px !important;
+        background-color: var(--surface) !important;
+        transition: background-color 0.2s ease !important;
+    }
+    [data-testid="stExpander"] summary:hover {
+        background-color: rgba(107, 163, 206, 0.05) !important;
+    }
+    [data-testid="stExpanderDetails"] {
+        padding: 24px !important;
+        border-top: 1px dashed var(--border) !important;
+    }
+
     .kpi-big-val { font-size: 96px; font-weight: 800; line-height: 1; color: var(--text-primary);}
     .kpi-big-title { font-size: 20px; font-weight: 600; color: var(--accent-blue); margin-top: 12px;}
     .kpi-small-val { font-size: 48px; font-weight: 700; line-height: 1; color: var(--text-primary);}
     .kpi-small-title { font-size: 16px; font-weight: 600; color: var(--text-secondary); margin-top: 8px;}
-    .card-title { font-size: 28px; font-weight: 800; line-height: 1.2; margin-bottom: 8px; color: var(--text-primary);}
     .card-meta { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 32px;}
     .card-section { font-size: 12px; font-weight: 800; text-transform: uppercase; color: var(--accent-blue); margin-top: 24px; margin-bottom: 8px; border-bottom: 1px solid rgba(107,163,206,0.2); padding-bottom: 4px;}
     .card-body { font-size: 15px; font-weight: 400; line-height: 1.6; color: var(--text-primary);}
@@ -348,13 +363,7 @@ def inject_enterprise_css():
     .badge-tipe { background-color: var(--sem-blue-bg); color: var(--accent-blue); border: 1px solid rgba(107, 163, 206, 0.2); }
     .gdrive-link-btn { display: inline-flex; align-items: center; gap: 8px; background-color: rgba(107, 163, 206, 0.12); color: var(--accent-blue) !important; padding: 8px 18px; border-radius: 12px; font-weight: 700; font-size: 13.5px; text-decoration: none !important; margin-top: 16px; transition: all 0.2s ease; border: 1px solid rgba(107, 163, 206, 0.25); }
     .gdrive-link-btn:hover { background-color: var(--accent-blue); color: var(--surface) !important; transform: translateY(-2px); }
-    .custom-details { margin-top: 20px; }
-    .custom-summary { cursor: pointer; font-size: 13px; font-weight: 700; color: var(--accent-blue); background-color: rgba(107, 163, 206, 0.1); padding: 8px 16px; border-radius: 8px; display: inline-block; transition: all 0.2s ease; list-style: none; }
-    .custom-summary::-webkit-details-marker { display: none; }
-    .custom-summary:hover { background-color: var(--accent-blue); color: var(--surface); }
-    .custom-details[open] .custom-summary { background-color: var(--text-secondary); color: var(--surface); margin-bottom: 12px; }
-    .details-content { animation: fadeIn 0.3s ease-in-out; padding-top: 16px; border-top: 1px dashed rgba(107, 163, 206, 0.3); }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+    
     .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div { background-color: var(--bg) !important; border: 1px solid var(--border) !important; border-radius: 18px !important; padding: 16px 20px !important; font-size: 17px; font-weight: 500; color: var(--text-primary) !important; transition: .2s ease; }
     .stTextInput input:focus, .stTextArea textarea:focus, .stSelectbox div[data-baseweb="select"] > div:focus-within { border-color: var(--accent-blue) !important; box-shadow: 0 0 0 2px rgba(107,163,206,0.3) !important; }
     .stButton button, .stDownloadButton button, [data-testid="stFormSubmitButton"] button { background-color: var(--accent-blue) !important; color: var(--surface) !important; border-radius: 20px !important; padding: 16px 32px !important; font-weight: 600 !important; font-size: 17px !important; border: none !important; width: 100%; transition: transform .3s, box-shadow .3s !important; }
@@ -366,7 +375,6 @@ def inject_enterprise_css():
     [data-testid="stSidebar"] { background-color: var(--surface) !important; border-right: 1px solid var(--border); }
     div[role="radiogroup"] > label { background-color: transparent !important; padding: 12px 20px; border-radius: 12px; font-size: 17px; font-weight: 600; color: var(--text-secondary); transition: .2s; }
     div[role="radiogroup"] > label[data-checked="true"] { background-color: var(--bg) !important; color: var(--accent-blue) !important; }
-    [data-testid="stFileUploadDropzone"] { border-radius: 18px !important; border: 1px dashed var(--accent-blue) !important; background-color: var(--bg) !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -376,10 +384,9 @@ def render_big_kpi(title, value):
 def render_small_kpi(title, value):
     st.markdown(f"""<div class="bento" style="padding: 30px;"><div class="kpi-small-val">{value}</div><div class="kpi-small-title">{title}</div></div>""", unsafe_allow_html=True)
 
-def render_knowledge_card(row, compact=True):
+def render_knowledge_card_content(row):
     status_str = str(row['status']).replace(" Pending Review", "Pending").replace(" ", "")
     
-    # Text clean up for HTML
     deskripsi = str(row['deskripsi_isu']).replace('\n', '<br>')
     dampak = str(row['dampak_isu']).replace('\n', '<br>')
     pencegahan = str(row['aktivitas_pencegahan']).replace('\n', '<br>')
@@ -391,53 +398,23 @@ def render_knowledge_card(row, compact=True):
     kat_badge = f"<span class='badge badge-kategori'>{row.get('kategori', 'Area perbaikan')}</span>"
     tipe_badge = f"<span class='badge badge-tipe'>Divisi: {row.get('tipe', '-')}</span>"
 
-    if compact:
-        is_long = len(str(row['deskripsi_isu'])) > 120
-        short_desc = (str(row['deskripsi_isu'])[:120] + "...").replace('\n', '<br>') if is_long else deskripsi
-        card_html = f"""
-        <div class="bento">
-            <div class="card-title">{row['nama_proyek']}</div>
-            <div class="card-meta">PM: {row['manajer_proyek']} &nbsp;|&nbsp; Last Updated: {row['upload_date']}</div>
-            <div style="margin-bottom: 24px;">
-                <span class="badge badge-status-{status_str}">{row['status']}</span>
-                {kat_badge} {tipe_badge}
-            </div>
-            <div class="card-section">Deskripsi Isu (Preview)</div>
-            <div class="card-body">{short_desc}</div>
-            {gdrive_html}
-            <details class="custom-details">
-                <summary class="custom-summary">Show Full Register Details</summary>
-                <div class="details-content">
-                    <div class="card-section" style="margin-top:0;">Deskripsi Isu</div>
-                    <div class="card-body">{deskripsi}</div>
-                    <div class="card-section">Dampak Isu</div>
-                    <div class="card-body">{dampak}</div>
-                    <div class="card-section">Aktivitas Pencegahan yang Dapat Dilakukan</div>
-                    <div class="card-body" style="font-weight: 600;">{pencegahan}</div>
-                    <div class="card-section">Tantangan yang Mungkin Dihadapi</div>
-                    <div class="card-body">{tantangan}</div>
-                </div>
-            </details>
-        </div>"""
-    else:
-        card_html = f"""
-        <div class="bento">
-            <div class="card-title">{row['nama_proyek']}</div>
-            <div class="card-meta">PM: {row['manajer_proyek']} &nbsp;|&nbsp; Last Updated: {row['upload_date']}</div>
-            <div style="margin-bottom: 24px;">
-                <span class="badge badge-status-{status_str}">{row['status']}</span>
-                {kat_badge} {tipe_badge}
-            </div>
-            <div class="card-section">Deskripsi Isu</div>
-            <div class="card-body">{deskripsi}</div>
-            <div class="card-section">Dampak Isu</div>
-            <div class="card-body">{dampak}</div>
-            <div class="card-section">Aktivitas Pencegahan yang Dapat Dilakukan</div>
-            <div class="card-body" style="font-weight: 600;">{pencegahan}</div>
-            <div class="card-section">Tantangan yang Mungkin Dihadapi</div>
-            <div class="card-body">{tantangan}</div>
-            {gdrive_html}
-        </div>"""
+    card_html = f"""
+    <div style="padding-bottom: 16px;">
+        <div class="card-meta" style="margin-bottom: 16px;">PM: {row['manajer_proyek']} &nbsp;|&nbsp; Last Updated: {row['upload_date']}</div>
+        <div style="margin-bottom: 24px;">
+            <span class="badge badge-status-{status_str}">{row['status']}</span>
+            {kat_badge} {tipe_badge}
+        </div>
+        <div class="card-section" style="margin-top:0;">Deskripsi Isu</div>
+        <div class="card-body">{deskripsi}</div>
+        <div class="card-section">Dampak Isu</div>
+        <div class="card-body">{dampak}</div>
+        <div class="card-section">Aktivitas Pencegahan yang Dapat Dilakukan</div>
+        <div class="card-body" style="font-weight: 600;">{pencegahan}</div>
+        <div class="card-section">Tantangan yang Mungkin Dihadapi</div>
+        <div class="card-body">{tantangan}</div>
+        {gdrive_html}
+    </div>"""
     st.markdown(card_html, unsafe_allow_html=True)
 
 def render_empty_state(title="Lessons Learned Register", subtitle="Belum ada data yang tersimpan.<br>Buat entri pertama Anda untuk mulai membangun basis data organisasi."):
@@ -500,14 +477,18 @@ def view_dashboard(repo):
 
 def view_browse(repo):
     st.markdown("<div class='section-title'>Browse Lessons Learned</div>", unsafe_allow_html=True)
-    compact_mode = st.toggle("Enable Compact View", value=True)
     df = repo.fetch_all()
     search_query = st.text_input("Search", placeholder="Cari nama proyek, masalah, atau divisi...", label_visibility="collapsed")
     if search_query: df = df[df.astype(str).apply(lambda x: x.str.contains(search_query, case=False, na=False)).any(axis=1)]
     st.write("")
-    if df.empty: render_empty_state()
+    
+    if df.empty: 
+        render_empty_state()
     else:
-        for _, row in df.iterrows(): render_knowledge_card(row, compact=compact_mode)
+        # ACCORDION VIEW UNTUK HALAMAN BROWSE
+        for _, row in df.iterrows(): 
+            with st.expander(f"📌 {row['nama_proyek']} | {row['tipe']}"):
+                render_knowledge_card_content(row)
 
 def view_upload(repo):
     st.markdown("<div class='section-title'>Lessons Learned Register Project</div>", unsafe_allow_html=True)
@@ -645,15 +626,19 @@ def view_revision(repo):
 
 def view_approval(repo):
     st.markdown("<div class='section-title'>Review & Approval</div>", unsafe_allow_html=True)
-    compact_mode = st.toggle("Enable Compact View", value=True)
     df = repo.fetch_all()
     pending_df = df[df['status'] == 'Pending Review']
+    
     if pending_df.empty:
         render_empty_state("Inbox Kosong", "Semua register telah direview.")
         return
+        
+    # ACCORDION VIEW UNTUK HALAMAN APPROVAL
     for _, row in pending_df.iterrows():
-        render_knowledge_card(row, compact=compact_mode)
-        with st.container(border=True):
+        with st.expander(f"📝 [PENDING] {row['nama_proyek']} | PM: {row['manajer_proyek']}"):
+            render_knowledge_card_content(row)
+            
+            st.markdown("---")
             notes = st.text_area("Catatan Reviewer (Wajib diisi jika revisi)", key=f"note_{row['id']}")
             c1, c2, c3, c4 = st.columns(4)
             with c1:
@@ -690,27 +675,19 @@ def main():
     inject_enterprise_css()
     repo = get_repository()
 
-    # 1. Inisialisasi Session State untuk Login
     if 'logged_in' not in st.session_state:
         st.session_state.logged_in = False
         st.session_state.role = None
         st.session_state.username = None
 
-    # 2. Cek Status Login
     if not st.session_state.logged_in:
         view_login()
         return
 
-    # 3. Pengaturan Navigasi berdasarkan Role (RBAC)
     role = st.session_state.role
-    
-    # Akses Dasar (Viewer)
     allowed_pages = ["Dashboard", "Browse"] 
-    
-    # Tambahan Akses Uploader
     if role == "Uploader":
         allowed_pages.extend(["New Register", "Revision Desk"])
-    # Tambahan Akses Reviewer
     elif role == "Reviewer":
         allowed_pages.extend(["Approval", "Export"])
 
@@ -728,7 +705,6 @@ def main():
             st.session_state.username = None
             st.rerun()
             
-    # 4. Routing Halaman
     if navigation == "Dashboard": view_dashboard(repo)
     elif navigation == "Browse": view_browse(repo)
     elif navigation == "New Register" and role == "Uploader": view_upload(repo)
