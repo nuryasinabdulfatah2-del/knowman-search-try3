@@ -63,6 +63,27 @@ USER_CREDENTIALS = {
     "guest": {"password": "password123", "role": "Viewer"}
 }
 
+# --- LIST SATUAN KERJA (Berdasarkan Struktur Organisasi) ---
+PMO_SATKER_OPTIONS = [
+    "Project Management Office",
+    "Mine Development",
+    "Logistic & Infrastructure Development",
+    "Energy Business Development",
+    "Downstream Business Development"
+]
+
+ALL_DEPARTMENTS_OPTIONS = [
+    "Corporate Secretary", "Internal Audit", "Corporate Management System & Performance",
+    "Project Management Office", "Mine Development", "Logistic & Infrastructure Development", "Energy Business Development", "Downstream Business Development",
+    "Budgeting & Accounting", "Corporate Finance", "Portfolio Management", "Information Technology", "Risk Management",
+    "Strategic Human Capital", "Human Capital Operations", "Asset management & Supporting Civil Infrastructure", "Legal & Regulatory Affairs", "Sustainability", "Procurement",
+    "Production & Operation Optimization", "Corporate SHE", "Planning", "Mine Planning", "Exploration",
+    "Tanjung Enim Mining Site", "Mining", "Coal Handling & Transportation", "Environmental Management & Mining Support", "Operational Services", "Coal Handling Facility & Main Mining Equipment Maintenance", "Production & Mining Support Equipment Maintenance",
+    "Maintenance", "Ombilin Mining Site",
+    "Commercial", "Marketing", "Distribution", "Tarahan Port", "Kertapati Port",
+    "Lainnya"
+]
+
 # MAPPING FOLDER G-DRIVE BERDASARKAN TIPE / DIVISI
 DIVISION_FOLDERS = {
     "Human Resources (HR)": "14Q949Rt_UNyEKYenuneBZXlgzznUMOnY",
@@ -139,11 +160,14 @@ class KnowledgeRepository:
     def _init_db(self):
         conn = self.get_connection()
         cur = conn.cursor()
+        # Menambahkan kolom project_owner & related_department
         cur.execute("""
             CREATE TABLE IF NOT EXISTS lessons_learned (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, 
                 nama_proyek TEXT NOT NULL, 
                 manajer_proyek TEXT, 
+                project_owner TEXT,
+                related_department TEXT,
                 kategori TEXT, 
                 tipe TEXT, 
                 deskripsi_isu TEXT, 
@@ -171,12 +195,12 @@ class KnowledgeRepository:
             cur = conn.cursor()
             cur.execute("""
                 INSERT INTO lessons_learned 
-                (nama_proyek, manajer_proyek, kategori, tipe, deskripsi_isu, dampak_isu, aktivitas_pencegahan, tantangan, status, upload_date, gdrive_link) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pending Review', ?, ?)
+                (nama_proyek, manajer_proyek, project_owner, related_department, kategori, tipe, deskripsi_isu, dampak_isu, aktivitas_pencegahan, tantangan, status, upload_date, gdrive_link) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending Review', ?, ?)
             """, (
-                data['nama_proyek'], data['manajer_proyek'], data['kategori'], data['tipe'], 
-                data['deskripsi_isu'], data['dampak_isu'], data['aktivitas_pencegahan'], data['tantangan'], 
-                datetime.now().strftime("%d %B %Y"), data.get('gdrive_link', '')
+                data['nama_proyek'], data['manajer_proyek'], data['project_owner'], data['related_department'],
+                data['kategori'], data['tipe'], data['deskripsi_isu'], data['dampak_isu'], 
+                data['aktivitas_pencegahan'], data['tantangan'], datetime.now().strftime("%d %B %Y"), data.get('gdrive_link', '')
             ))
             conn.commit()
             conn.close()
@@ -201,12 +225,12 @@ class KnowledgeRepository:
             cur = conn.cursor()
             cur.execute("""
                 UPDATE lessons_learned 
-                SET nama_proyek = ?, manajer_proyek = ?, kategori = ?, tipe = ?, deskripsi_isu = ?, dampak_isu = ?, aktivitas_pencegahan = ?, tantangan = ?, gdrive_link = ?, status = 'Pending Review' 
+                SET nama_proyek = ?, manajer_proyek = ?, project_owner = ?, related_department = ?, kategori = ?, tipe = ?, deskripsi_isu = ?, dampak_isu = ?, aktivitas_pencegahan = ?, tantangan = ?, gdrive_link = ?, status = 'Pending Review' 
                 WHERE id = ?
             """, (
-                data['nama_proyek'], data['manajer_proyek'], data['kategori'], data['tipe'], 
-                data['deskripsi_isu'], data['dampak_isu'], data['aktivitas_pencegahan'], data['tantangan'], 
-                data.get('gdrive_link', ''), record_id
+                data['nama_proyek'], data['manajer_proyek'], data['project_owner'], data['related_department'],
+                data['kategori'], data['tipe'], data['deskripsi_isu'], data['dampak_isu'], 
+                data['aktivitas_pencegahan'], data['tantangan'], data.get('gdrive_link', ''), record_id
             ))
             conn.commit()
             conn.close()
@@ -396,11 +420,17 @@ def render_knowledge_card_content(row):
     gdrive_html = f"""<div style="margin-top: 16px;"><a href="{gdrive_link}" target="_blank" class="gdrive-link-btn">📂 Open Google Drive Document</a></div>""" if gdrive_link else ""
     
     kat_badge = f"<span class='badge badge-kategori'>{row.get('kategori', 'Area perbaikan')}</span>"
-    tipe_badge = f"<span class='badge badge-tipe'>Divisi: {row.get('tipe', '-')}</span>"
+    tipe_badge = f"<span class='badge badge-tipe'>Divisi Folder: {row.get('tipe', '-')}</span>"
+
+    # Menambahkan Info Owner dan Department pada Meta Text
+    owner_text = row.get('project_owner', '-')
+    dept_text = row.get('related_department', '-')
 
     card_html = f"""
     <div style="padding-bottom: 16px;">
-        <div class="card-meta" style="margin-bottom: 16px;">PM: {row['manajer_proyek']} &nbsp;|&nbsp; Last Updated: {row['upload_date']}</div>
+        <div class="card-meta" style="margin-bottom: 16px;">
+            PM: {row['manajer_proyek']} &nbsp;|&nbsp; Owner: {owner_text} &nbsp;|&nbsp; Dept: {dept_text} &nbsp;|&nbsp; Last Updated: {row['upload_date']}
+        </div>
         <div style="margin-bottom: 24px;">
             <span class="badge badge-status-{status_str}">{row['status']}</span>
             {kat_badge} {tipe_badge}
@@ -478,16 +508,46 @@ def view_dashboard(repo):
 def view_browse(repo):
     st.markdown("<div class='section-title'>Browse Lessons Learned</div>", unsafe_allow_html=True)
     df = repo.fetch_all()
-    search_query = st.text_input("Search", placeholder="Cari nama proyek, masalah, atau divisi...", label_visibility="collapsed")
-    if search_query: df = df[df.astype(str).apply(lambda x: x.str.contains(search_query, case=False, na=False)).any(axis=1)]
+    
+    # --- PANEL FILTER TERSTRUKTUR ---
+    with st.container(border=True):
+        st.markdown("<div style='font-weight: 700; font-size: 16px; margin-bottom: 12px; color: var(--text-primary);'>🔍 Filter & Pencarian Multi-Kategori</div>", unsafe_allow_html=True)
+        
+        # Input Kata Kunci
+        search_query = st.text_input("Kata Kunci", placeholder="Cari nama proyek, isu, dampak, atau kata kunci solusi...", label_visibility="collapsed")
+        
+        # Dropdown Filter 3 Kolom
+        f1, f2, f3 = st.columns(3)
+        with f1:
+            selected_kategori = st.selectbox("Kategori Isu", ["Semua Kategori"] + KATEGORI_OPTIONS)
+        with f2:
+            selected_tipe = st.selectbox("Divisi / Tipe Proyek", ["Semua Divisi"] + TIPE_DIVISI_OPTIONS)
+        with f3:
+            STATUS_OPTIONS = ["Semua Status", "Verified", "Pending Review", "Needs Revision", "Rejected"]
+            selected_status = st.selectbox("Status Verifikasi", STATUS_OPTIONS)
+
+    # --- LOGIKA PENYARINGAN DATA (MULTI-FILTER) ---
+    if selected_kategori != "Semua Kategori":
+        df = df[df['kategori'] == selected_kategori]
+        
+    if selected_tipe != "Semua Divisi":
+        df = df[df['tipe'] == selected_tipe]
+        
+    if selected_status != "Semua Status":
+        df = df[df['status'] == selected_status]
+        
+    if search_query:
+        df = df[df.astype(str).apply(lambda x: x.str.contains(search_query, case=False, na=False)).any(axis=1)]
+
     st.write("")
     
+    # --- HASIL PENCARIAN ---
     if df.empty: 
-        render_empty_state()
+        render_empty_state("Data Tidak Ditemukan", "Tidak ada dokumen lessons learned yang sesuai dengan kombinasi filter Anda.")
     else:
-        # ACCORDION VIEW UNTUK HALAMAN BROWSE
+        st.markdown(f"<div style='font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 16px;'>Menampilkan <b>{len(df)}</b> register pengetahuan yang sesuai kriteria.</div>", unsafe_allow_html=True)
         for _, row in df.iterrows(): 
-            with st.expander(f"📌 {row['nama_proyek']} | {row['tipe']}"):
+            with st.expander(f"📌 {row['nama_proyek']} | Divisi: {row['tipe']} | [{row['status']}]"):
                 render_knowledge_card_content(row)
 
 def view_upload(repo):
@@ -532,6 +592,13 @@ def view_upload(repo):
             nama_proyek = st.text_input("Nama Proyek", placeholder="Contoh: Pembangunan Sistem X...")
             manajer_proyek = st.text_input("Manajer Proyek", placeholder="Nama PM...")
             
+            # --- FIELD BARU: Project Owner & Related Department ---
+            c_owner, c_dept = st.columns(2)
+            with c_owner:
+                project_owner = st.selectbox("Project Owner (PMO)", PMO_SATKER_OPTIONS)
+            with c_dept:
+                related_department = st.selectbox("Related Department", ALL_DEPARTMENTS_OPTIONS)
+
             c1, c2 = st.columns(2)
             with c1:
                 kategori = st.selectbox("Kategori", KATEGORI_OPTIONS)
@@ -556,11 +623,18 @@ def view_upload(repo):
                                 link = upload_to_gdrive(st.session_state.uploaded_file_bytes, st.session_state.uploaded_filename, target_folder_id)
                                 if link: auto_gdrive_link = link
 
+                    # Memasukkan field baru ke dalam dictionary data
                     data = {
-                        "nama_proyek": nama_proyek, "manajer_proyek": manajer_proyek, 
-                        "kategori": kategori, "tipe": tipe, 
-                        "deskripsi_isu": deskripsi_isu, "dampak_isu": dampak_isu, 
-                        "aktivitas_pencegahan": aktivitas_pencegahan, "tantangan": tantangan,
+                        "nama_proyek": nama_proyek, 
+                        "manajer_proyek": manajer_proyek, 
+                        "project_owner": project_owner,
+                        "related_department": related_department,
+                        "kategori": kategori, 
+                        "tipe": tipe, 
+                        "deskripsi_isu": deskripsi_isu, 
+                        "dampak_isu": dampak_isu, 
+                        "aktivitas_pencegahan": aktivitas_pencegahan, 
+                        "tantangan": tantangan,
                         "gdrive_link": auto_gdrive_link
                     }
                     
@@ -601,6 +675,18 @@ def view_revision(repo):
             with st.form(f"form_rev_{rid}", border=False):
                 nama_proyek = st.text_input("Nama Proyek", value=row['nama_proyek'])
                 manajer_proyek = st.text_input("Manajer Proyek", value=row['manajer_proyek'])
+
+                # --- FIELD BARU PADA MENU REVISI ---
+                c_owner, c_dept = st.columns(2)
+                with c_owner:
+                    owner_val = row.get('project_owner', '')
+                    owner_idx = PMO_SATKER_OPTIONS.index(owner_val) if owner_val in PMO_SATKER_OPTIONS else 0
+                    project_owner = st.selectbox("Project Owner (PMO)", PMO_SATKER_OPTIONS, index=owner_idx)
+                with c_dept:
+                    dept_val = row.get('related_department', '')
+                    dept_idx = ALL_DEPARTMENTS_OPTIONS.index(dept_val) if dept_val in ALL_DEPARTMENTS_OPTIONS else 0
+                    related_department = st.selectbox("Related Department", ALL_DEPARTMENTS_OPTIONS, index=dept_idx)
+                
                 c1, c2 = st.columns(2)
                 with c1:
                     kat_idx = KATEGORI_OPTIONS.index(row['kategori']) if row['kategori'] in KATEGORI_OPTIONS else 0
@@ -617,9 +703,17 @@ def view_revision(repo):
                 st.write("")
                 if st.form_submit_button("Resubmit for Review"):
                     data = {
-                        'nama_proyek': nama_proyek, 'manajer_proyek': manajer_proyek, 'kategori': kategori, 'tipe': tipe, 
-                        'deskripsi_isu': deskripsi_isu, 'dampak_isu': dampak_isu, 'aktivitas_pencegahan': aktivitas_pencegahan, 
-                        'tantangan': tantangan, 'gdrive_link': row['gdrive_link']
+                        'nama_proyek': nama_proyek, 
+                        'manajer_proyek': manajer_proyek, 
+                        'project_owner': project_owner,
+                        'related_department': related_department,
+                        'kategori': kategori, 
+                        'tipe': tipe, 
+                        'deskripsi_isu': deskripsi_isu, 
+                        'dampak_isu': dampak_isu, 
+                        'aktivitas_pencegahan': aktivitas_pencegahan, 
+                        'tantangan': tantangan, 
+                        'gdrive_link': row['gdrive_link']
                     }
                     if repo.resubmit_record(rid, data):
                         st.rerun()
@@ -633,7 +727,6 @@ def view_approval(repo):
         render_empty_state("Inbox Kosong", "Semua register telah direview.")
         return
         
-    # ACCORDION VIEW UNTUK HALAMAN APPROVAL
     for _, row in pending_df.iterrows():
         with st.expander(f"📝 [PENDING] {row['nama_proyek']} | PM: {row['manajer_proyek']}"):
             render_knowledge_card_content(row)
