@@ -1025,7 +1025,7 @@ def main():
         st.write("")
         st.write("")
         st.markdown(f"<div style='font-family:\"Manrope\", sans-serif; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 24px; padding: 12px; background: rgba(255,255,255,0.9); border-radius:12px; border: 1px solid rgba(142, 45, 226, 0.2);'>Otentikasi:<br><span style='font-family:\"Space Grotesk\"; font-size:16px; font-weight:700; color:#4A00E0;'>{st.session_state.username}</span><br>Clearance: {role}</div>", unsafe_allow_html=True)
-        if st.button("TERMINASI SESI"):
+        if st.button("Logout"):
             st.session_state.logged_in = False
             st.session_state.role = None
             st.session_state.username = None
