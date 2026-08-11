@@ -880,7 +880,7 @@ def view_revision(repo):
     df = repo.fetch_all()
     rev_df = df[df['status'] == 'Needs Revision']
     if rev_df.empty:
-        render_empty_state("Antrean Steril", "Tidak ada dokumen anomali yang menuntut perbaikan per detik ini.")
+        render_empty_state("Tidak Ada Antrean", "Tidak ada dokumen yang perlu diperbaiki")
         return
 
     for _, row in rev_df.iterrows():
