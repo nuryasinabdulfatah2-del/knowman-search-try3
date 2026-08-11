@@ -942,7 +942,7 @@ def view_approval(repo):
     pending_df = df[df['status'] == 'Pending Review']
     
     if pending_df.empty:
-        render_empty_state("Antrean Bersih", "Seluruh matriks draf telah disahkan dan diarsipkan secara rapi.")
+        render_empty_state("Tidak Ada Antrean", "Seluruh draf telah disahkan dan diarsipkan.")
         return
         
     for _, row in pending_df.iterrows():
