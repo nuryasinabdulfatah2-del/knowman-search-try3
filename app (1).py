@@ -83,7 +83,7 @@ ALL_DEPARTMENTS_OPTIONS = [
 ]
 
 DIVISION_FOLDERS = {
-    "Project Management Office Division": "1-bPwqpCeY4yRtdGpzfZ4UmjmQKSTk7AV,
+    "Project Management Office Division": "1-bPwqpCeY4yRtdGpzfZ4UmjmQKSTk7AV",
     "Logistics & Infrastructure Development Sub-Division": "1w7nie08G8ZlXpLJzMV9V-7MytF2LIWr9",
     "Mine Development Sub-Division": "1kVAq06Jep0dLL-dTOpDLqtxR3iugcB4F",
     "Energy Business Development Sub-Division": "14Q949Rt_UNyEKYenuneBZXlgzznUMOnY",
