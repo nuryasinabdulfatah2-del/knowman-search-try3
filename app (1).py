@@ -62,14 +62,6 @@ USER_CREDENTIALS = {
     "guest": {"password": "password123", "role": "Viewer"}
 }
 
-PMO_SATKER_OPTIONS = [
-    "Project Management Office",
-    "Mine Development",
-    "Logistic & Infrastructure Development",
-    "Energy Business Development",
-    "Downstream Business Development"
-]
-
 ALL_DEPARTMENTS_OPTIONS = [
     "Corporate Secretary", "Internal Audit", "Corporate Management System & Performance",
     "Project Management Office", "Mine Development", "Logistic & Infrastructure Development", "Energy Business Development", "Downstream Business Development",
@@ -587,11 +579,18 @@ def inject_full_holo_css():
         transform: translateY(-3px); 
     }
 
-    /* Role-based button overrides */
-    div[data-testid="stButton"] button:has(p:contains("Reject")) { background: #FF0055 !important; color:#FFF !important;}
-    div[data-testid="stButton"] button:has(p:contains("Reject")):hover { box-shadow: 0 8px 25px rgba(255, 0, 85, 0.4) !important;}
-    div[data-testid="stButton"] button:has(p:contains("Verify")) { background: #00C9FF !important; color:#FFF !important;}
-    div[data-testid="stButton"] button:has(p:contains("Verify")):hover { box-shadow: 0 8px 25px rgba(0, 201, 255, 0.4) !important;}
+    /* Role-based button overrides (Targeting Indonesian Words safely) */
+    div[data-testid="stButton"] button:has(p:contains("Hapus")) { background: #E2E8F0 !important; color:#1A1A24 !important; box-shadow: none !important; border:none !important;}
+    div[data-testid="stButton"] button:has(p:contains("Hapus")):hover { background: #FF0055 !important; color:#FFF !important; box-shadow: 0 8px 25px rgba(255, 0, 85, 0.4) !important;}
+    
+    div[data-testid="stButton"] button:has(p:contains("Tolak")) { background: #FF0055 !important; color:#FFF !important; border:none !important;}
+    div[data-testid="stButton"] button:has(p:contains("Tolak")):hover { box-shadow: 0 8px 25px rgba(255, 0, 85, 0.4) !important;}
+    
+    div[data-testid="stButton"] button:has(p:contains("Tuntut")) { background: #FFD966 !important; color:#1A1A24 !important; border:none !important;}
+    div[data-testid="stButton"] button:has(p:contains("Tuntut")):hover { box-shadow: 0 8px 25px rgba(255, 217, 102, 0.4) !important;}
+    
+    div[data-testid="stButton"] button:has(p:contains("Sahkan")) { background: #00C9FF !important; color:#FFF !important; border:none !important;}
+    div[data-testid="stButton"] button:has(p:contains("Sahkan")):hover { box-shadow: 0 8px 25px rgba(0, 201, 255, 0.4) !important;}
 
     /* Sidebar Radio */
     div[role="radiogroup"] > label { background-color: transparent !important; padding: 14px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--text-muted); transition: 0.3s; letter-spacing: 0.5px;}
@@ -645,45 +644,35 @@ def render_knowledge_card_content(row):
     
     kat_badge = f"<span class='badge badge-kategori'>✦ {row.get('kategori', 'Area perbaikan')}</span>"
     tipe_badge = f"<span class='badge badge-tipe'>⊚ {row.get('tipe', '-')}</span>"
-
-    owner_text = row.get('project_owner', '-')
     dept_text = row.get('related_department', '-')
 
-    card_html = f"""
-    <div>
-        <div class="card-meta">
-            Eksekutor: <span style="color:#1A1A24; font-weight:700;">{row['manajer_proyek']}</span> &nbsp; • &nbsp; 
-            Owner: <span style="color:#1A1A24; font-weight:700;">{owner_text}</span> &nbsp; • &nbsp; 
-            Dept: <span style="color:#1A1A24; font-weight:700;">{dept_text}</span> &nbsp; • &nbsp; 
-            Date: <span style="color:#1A1A24; font-weight:700;">{row['upload_date']}</span>
-        </div>
-        <div style="margin-bottom: 32px;">
-            <span class="badge badge-status-{status_str}">Status: {row['status']}</span>
-            {kat_badge} {tipe_badge}
-        </div>
-        
-        <div class="card-section">Identifikasi Anomali</div>
-        <div class="card-body">{deskripsi}</div>
-        
-        <div class="holo-wave-divider" style="height:20px; margin: 24px 0;"></div>
-        
-        <div class="card-section">Dampak / Spektrum Skala</div>
-        <div class="card-body">{dampak}</div>
-        
-        <div class="holo-wave-divider" style="height:20px; margin: 24px 0;"></div>
-        
-        <div class="card-section">Protokol Solusi Efektif</div>
-        <div class="card-body" style="font-weight: 700; color: #4A00E0;">{pencegahan}</div>
-        
-        <div class="holo-wave-divider" style="height:20px; margin: 24px 0;"></div>
-        
-        <div class="card-section">Limitasi & Tantangan</div>
-        <div class="card-body">{tantangan}</div>
-        {gdrive_html}
-    </div>"""
+    # FORMAT STRING DIPERKETAT UNTUK MENGHINDARI BUG MARKDOWN CODE-BLOCK
+    card_html = f"""<div style="padding-bottom: 16px;">
+<div class="card-meta">
+Eksekutor: <span style="color:#1A1A24; font-weight:700;">{row['manajer_proyek']}</span> &nbsp; • &nbsp; 
+Dept: <span style="color:#1A1A24; font-weight:700;">{dept_text}</span> &nbsp; • &nbsp; 
+Date: <span style="color:#1A1A24; font-weight:700;">{row['upload_date']}</span>
+</div>
+<div style="margin-bottom: 32px;">
+<span class="badge badge-status-{status_str}">Status: {row['status']}</span>
+{kat_badge} {tipe_badge}
+</div>
+<div class="card-section">Identifikasi Anomali</div>
+<div class="card-body">{deskripsi}</div>
+<div class="holo-wave-divider" style="height:20px; margin: 24px 0;"></div>
+<div class="card-section">Dampak / Spektrum Skala</div>
+<div class="card-body">{dampak}</div>
+<div class="holo-wave-divider" style="height:20px; margin: 24px 0;"></div>
+<div class="card-section">Protokol Solusi Efektif</div>
+<div class="card-body" style="font-weight: 700; color: #4A00E0;">{pencegahan}</div>
+<div class="holo-wave-divider" style="height:20px; margin: 24px 0;"></div>
+<div class="card-section">Limitasi & Tantangan</div>
+<div class="card-body">{tantangan}</div>
+{gdrive_html}
+</div>"""
     st.markdown(card_html, unsafe_allow_html=True)
 
-def render_empty_state(title="Data Tidak Ditemukan", subtitle="Belum ada data yang diunggah. Mulai inisiasi data baru untuk mengisi basis pengetahuan."):
+def render_empty_state(title="Data Nihil", subtitle="Tidak ada data yang direkam di sektor ini. Mulai inisiasi data baru untuk mengisi basis pengetahuan."):
     st.markdown(f"""<div class="bento" style="text-align: center; padding: 120px 40px;"><div class="section-title holo-text" style="margin-bottom: 16px; font-size: 32px; border:none;">{title}</div><div class="card-body" style="color: var(--text-muted); font-weight:500;">{subtitle}</div></div>""", unsafe_allow_html=True)
 
 # ==============================================================================
@@ -692,7 +681,7 @@ def render_empty_state(title="Data Tidak Ditemukan", subtitle="Belum ada data ya
 def view_login():
     st.markdown("""
         <div style="text-align: center; margin-top: 15vh; margin-bottom: 60px;">
-            <div class="hero-text"><span class="holo-text">Knowledge</span><br>Management System</div>
+            <div class="hero-text"><span class="holo-text">Knowledge</span><br>Management System.</div>
             <div class="hero-sub" style="margin: 0 auto;">Pusat Integrasi Pembelajaran Organisasi Divisi PMO PT Bukit Asam Tbk.</div>
         </div>
     """, unsafe_allow_html=True)
@@ -700,7 +689,7 @@ def view_login():
     col1, col2, col3 = st.columns([1, 1.2, 1])
     with col2:
         with st.container(border=True):
-            st.markdown("<div style='text-align:center; font-family:\"Space Grotesk\", sans-serif; font-size: 18px; margin-bottom: 32px; font-weight: 600; letter-spacing: 0.5px;'>Login</div>", unsafe_allow_html=True)
+            st.markdown("<div style='text-align:center; font-family:\"Space Grotesk\", sans-serif; font-size: 18px; margin-bottom: 32px; font-weight: 600; letter-spacing: 0.5px;'>Otentikasi Akses Keamanan</div>", unsafe_allow_html=True)
             username = st.text_input("Username", placeholder="ID Personel...")
             password = st.text_input("Password", type="password", placeholder="Kata Sandi Enkripsi...")
             
@@ -760,7 +749,7 @@ def view_browse(repo):
         with f1:
             selected_kategori = st.selectbox("Kategori Laporan", ["Semua Kategori"] + KATEGORI_OPTIONS)
         with f2:
-            selected_tipe = st.selectbox("Klasifikasi Proyek", ["Semua Divisi"] + TIPE_DIVISI_OPTIONS)
+            selected_tipe = st.selectbox("Pemilik Proyek / Divisi Utama", ["Semua Divisi"] + TIPE_DIVISI_OPTIONS)
         with f3:
             STATUS_OPTIONS = ["Semua Status", "Verified", "Pending Review", "Needs Revision", "Rejected"]
             selected_status = st.selectbox("Status Verifikasi", STATUS_OPTIONS)
@@ -777,7 +766,7 @@ def view_browse(repo):
     st.markdown("<div class='holo-wave-divider'></div>", unsafe_allow_html=True)
     
     if df.empty: 
-        render_empty_state("Pencarian Tidak Ada", "Sistem tidak mendeteksi rekaman yang selaras dengan filter spesifik Anda.")
+        render_empty_state("Pencarian Buntu", "Sistem tidak mendeteksi rekaman yang selaras dengan filter spesifik Anda.")
     else:
         st.markdown(f"<div style='font-size: 15px; font-weight:600; color: var(--text-muted); margin-bottom: 24px; letter-spacing: 0.5px;'>Menemukan <b>{len(df)}</b> rekaman data.</div>", unsafe_allow_html=True)
         for _, row in df.iterrows(): 
@@ -796,7 +785,7 @@ def view_upload(repo):
     if 'uploaded_filename' not in st.session_state: st.session_state.uploaded_filename = ""
     
     if st.session_state.save_success:
-        st.success("Data telah tersimpan. Terimakasih!")
+        st.success("Data telah tersimpan. Draf diteruskan ke modul otorisasi PMO.")
         st.session_state.save_success = False
         
     with st.container(border=True):
@@ -824,20 +813,20 @@ def view_upload(repo):
     
     with st.container(border=True):
         with st.form("entry_form", border=False, clear_on_submit=True):
-            nama_proyek = st.text_input("Identitas Proyek", placeholder="Contoh: Optimalisasi Tambang Pit 1...")
-            manajer_proyek = st.text_input("Manajer Pelaksana", placeholder="Nama Penanggung Jawab Eksekusi...")
-            
-            c_owner, c_dept = st.columns(2)
-            with c_owner:
-                project_owner = st.selectbox("Pemilik Proyek (PMO)", PMO_SATKER_OPTIONS)
-            with c_dept:
-                related_department = st.selectbox("Departemen Terkait", ALL_DEPARTMENTS_OPTIONS)
-
             c1, c2 = st.columns(2)
             with c1:
-                kategori = st.selectbox("Klasifikasi Kategori", KATEGORI_OPTIONS)
+                nama_proyek = st.text_input("Identitas Proyek", placeholder="Contoh: Optimalisasi Tambang Pit 1...")
             with c2:
-                tipe = st.selectbox("Divisi Utama (Folder Awan GDrive)", TIPE_DIVISI_OPTIONS)
+                manajer_proyek = st.text_input("Manajer Pelaksana", placeholder="Nama Penanggung Jawab Eksekusi...")
+            
+            c3, c4 = st.columns(2)
+            with c3:
+                # Field ini akan mengatur Tipe Divisi / Folder Awan GDrive sekaligus menjadi Project Owner di Database
+                tipe = st.selectbox("Pemilik Proyek / Divisi Utama (Folder GDrive)", TIPE_DIVISI_OPTIONS)
+            with c4:
+                related_department = st.selectbox("Departemen Terkait", ALL_DEPARTMENTS_OPTIONS)
+
+            kategori = st.selectbox("Klasifikasi Kategori", KATEGORI_OPTIONS)
                 
             deskripsi_isu = st.text_area("Deskripsi Kendala", value=st.session_state.ai_deskripsi, placeholder="Uraikan anomali operasional...", height=120)
             dampak_isu = st.text_area("Dampak Skala Proyek", value=st.session_state.ai_dampak, placeholder="Implikasi biaya atau timeline...", height=120)
@@ -860,7 +849,7 @@ def view_upload(repo):
                     data = {
                         "nama_proyek": nama_proyek, 
                         "manajer_proyek": manajer_proyek, 
-                        "project_owner": project_owner,
+                        "project_owner": tipe, # Diisi otomatis menggunakan dropdown Pemilik Proyek / Divisi
                         "related_department": related_department,
                         "kategori": kategori, 
                         "tipe": tipe, 
@@ -882,16 +871,16 @@ def view_upload(repo):
                         st.session_state.save_success = True
                         st.rerun()
                     else:
-                        st.error("Terjadi galat komputasi SQL.")
+                        st.error("Terjadi galat komputasi SQL saat menyimpan ke Database.")
                 else:
-                    st.error("Parameter Identitas Proyek dan Deskripsi bersifat esensial.")
+                    st.error("Parameter Identitas Proyek dan Deskripsi wajib diisi.")
 
 def view_revision(repo):
     st.markdown("<div class='section-title'>Revision <span class='holo-text'>Desk</span></div>", unsafe_allow_html=True)
     df = repo.fetch_all()
     rev_df = df[df['status'] == 'Needs Revision']
     if rev_df.empty:
-        render_empty_state("Tidak Ada Antrean", "Tidak ada dokumen yang perlu diperbaiki")
+        render_empty_state("Antrean Steril", "Tidak ada dokumen anomali yang menuntut perbaikan per detik ini.")
         return
 
     for _, row in rev_df.iterrows():
@@ -906,26 +895,23 @@ def view_revision(repo):
             st.markdown(f"""<div style="background: rgba(255, 255, 255, 0.9); border: 1px solid #FFD966; padding: 24px; border-radius: 12px; margin-bottom: 32px; box-shadow: 0 4px 15px rgba(255,217,102,0.2);"><div style="font-family:'Space Grotesk'; font-weight: 700; color: #B38800; margin-bottom: 8px; font-size: 13px; text-transform: uppercase; letter-spacing:1px;">Catatan Penolakan PMO</div><div style="color: var(--text-main); font-size: 15px; font-weight:500; line-height: 1.6;">{row['reviewer_notes']}</div></div>""", unsafe_allow_html=True)
             
             with st.form(f"form_rev_{rid}", border=False):
-                nama_proyek = st.text_input("Identitas Proyek", value=row['nama_proyek'])
-                manajer_proyek = st.text_input("Manajer Pelaksana", value=row['manajer_proyek'])
+                c1, c2 = st.columns(2)
+                with c1:
+                    nama_proyek = st.text_input("Identitas Proyek", value=row['nama_proyek'])
+                with c2:
+                    manajer_proyek = st.text_input("Manajer Pelaksana", value=row['manajer_proyek'])
 
-                c_owner, c_dept = st.columns(2)
-                with c_owner:
-                    owner_val = row.get('project_owner', '')
-                    owner_idx = PMO_SATKER_OPTIONS.index(owner_val) if owner_val in PMO_SATKER_OPTIONS else 0
-                    project_owner = st.selectbox("Pemilik Proyek (PMO)", PMO_SATKER_OPTIONS, index=owner_idx)
-                with c_dept:
+                c3, c4 = st.columns(2)
+                with c3:
+                    tipe_idx = TIPE_DIVISI_OPTIONS.index(row['tipe']) if row['tipe'] in TIPE_DIVISI_OPTIONS else (len(TIPE_DIVISI_OPTIONS)-1)
+                    tipe = st.selectbox("Pemilik Proyek / Divisi Utama (Folder GDrive)", TIPE_DIVISI_OPTIONS, index=tipe_idx)
+                with c4:
                     dept_val = row.get('related_department', '')
                     dept_idx = ALL_DEPARTMENTS_OPTIONS.index(dept_val) if dept_val in ALL_DEPARTMENTS_OPTIONS else 0
                     related_department = st.selectbox("Departemen Afiliasi", ALL_DEPARTMENTS_OPTIONS, index=dept_idx)
                 
-                c1, c2 = st.columns(2)
-                with c1:
-                    kat_idx = KATEGORI_OPTIONS.index(row['kategori']) if row['kategori'] in KATEGORI_OPTIONS else 0
-                    kategori = st.selectbox("Klasifikasi Isu", KATEGORI_OPTIONS, index=kat_idx)
-                with c2:
-                    tipe_idx = TIPE_DIVISI_OPTIONS.index(row['tipe']) if row['tipe'] in TIPE_DIVISI_OPTIONS else (len(TIPE_DIVISI_OPTIONS)-1)
-                    tipe = st.selectbox("Divisi Utama", TIPE_DIVISI_OPTIONS, index=tipe_idx)
+                kat_idx = KATEGORI_OPTIONS.index(row['kategori']) if row['kategori'] in KATEGORI_OPTIONS else 0
+                kategori = st.selectbox("Klasifikasi Isu", KATEGORI_OPTIONS, index=kat_idx)
                     
                 deskripsi_isu = st.text_area("Deskripsi Kendala", value=st.session_state[f'rev_desc_{rid}'], height=120)
                 dampak_isu = st.text_area("Dampak Skala Proyek", value=st.session_state[f'rev_dampak_{rid}'], height=120)
@@ -937,7 +923,7 @@ def view_revision(repo):
                     data = {
                         'nama_proyek': nama_proyek, 
                         'manajer_proyek': manajer_proyek, 
-                        'project_owner': project_owner,
+                        'project_owner': tipe, 
                         'related_department': related_department,
                         'kategori': kategori, 
                         'tipe': tipe, 
@@ -956,7 +942,7 @@ def view_approval(repo):
     pending_df = df[df['status'] == 'Pending Review']
     
     if pending_df.empty:
-        render_empty_state("Tidak Ada Antrean", "Seluruh draf telah disahkan dan diarsipkan")
+        render_empty_state("Antrean Bersih", "Seluruh matriks draf telah disahkan dan diarsipkan secara rapi.")
         return
         
     for _, row in pending_df.iterrows():
