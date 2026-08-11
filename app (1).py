@@ -2,7 +2,7 @@
 """
 PT Bukit Asam Knowledge Management System
 Architecture: Object-Oriented, Auto GDrive Integration, Dynamic Routing, GEMINI AI INTEGRATION, RBAC Login
-Format: Lessons Learned Register (Full Holographic Canvas UI Edition)
+Format: Lessons Learned Register (Full Holographic - High Contrast Edition)
 """
 
 import streamlit as st
@@ -98,18 +98,18 @@ KEYWORDS_DAMPAK = ["dampak", "akibat", "menyebabkan", "tertunda"]
 KEYWORDS_PENCEGAHAN = ["pencegahan", "solusi", "rekomendasi", "memilih"]
 KEYWORDS_TANTANGAN = ["tantangan", "risiko", "kemungkinan", "hambatan"]
 
-# --- PLOTLY FULL HOLOGRAPHIC THEME ---
+# --- PLOTLY HIGH CONTRAST HOLOGRAPHIC THEME ---
 def create_full_holographic_theme():
     font_family = "'Manrope', sans-serif"
     template = pio.templates["plotly_white"]
     template.layout.font = dict(family=font_family, color="#1A1A24", size=14)
-    template.layout.paper_bgcolor = "rgba(255,255,255,0.3)" # Slightly white for contrast over holo background
-    template.layout.plot_bgcolor = "rgba(255,255,255,0.4)"
-    template.layout.colorway = ["#FFB3E6", "#A3E9FF", "#C9B3FF", "#FFD966", "#8EE2D2"]
+    template.layout.paper_bgcolor = "rgba(255,255,255,0.7)" 
+    template.layout.plot_bgcolor = "rgba(255,255,255,0.8)"
+    template.layout.colorway = ["#8E2DE2", "#4A00E0", "#0052D4", "#E100FF", "#00C9FF"]
     template.layout.xaxis.showgrid = False
     template.layout.yaxis.showgrid = True
-    template.layout.yaxis.gridcolor = "rgba(26, 26, 36, 0.05)"
-    template.layout.xaxis.gridcolor = "rgba(26, 26, 36, 0.05)"
+    template.layout.yaxis.gridcolor = "rgba(26, 26, 36, 0.08)"
+    template.layout.xaxis.gridcolor = "rgba(26, 26, 36, 0.08)"
     pio.templates["full_holo"] = template
     pio.templates.default = "full_holo"
 
@@ -317,21 +317,25 @@ def extract_knowledge(text: str) -> dict:
     return res
 
 # ==============================================================================
-# 6. UI COMPONENTS & CSS (FULL HOLOGRAPHIC CANVAS)
+# 6. UI COMPONENTS & CSS (HIGH CONTRAST HOLOGRAPHIC)
 # ==============================================================================
 def inject_full_holo_css():
     st.markdown("""
     <style>
-    @import url('[https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&family=Manrope:wght@300;400;500;600&display=swap](https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&family=Manrope:wght@300;400;500;600&display=swap)');
+    @import url('[https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap](https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap)');
     
     :root {
-        --holo-grad: linear-gradient(120deg, #FFB3E6, #A3E9FF, #C9B3FF, #FFF3B3, #FFB3E6);
+        /* Background = Terang/Pastel (Light Holographic) */
+        --holo-bg-grad: linear-gradient(120deg, #FFB3E6, #A3E9FF, #C9B3FF, #FFF3B3, #FFB3E6);
+        
+        /* Teks & Tombol = Gelap/Pejal (Dark/Vivid Holographic) */
+        --holo-text-grad: linear-gradient(120deg, #4A00E0, #8E2DE2, #0052D4, #E100FF, #4A00E0);
+        
         --text-main: #1A1A24;
         --text-muted: #5A5A6A;
-        --white-overlay-strong: rgba(255, 255, 255, 0.85);
-        --white-overlay-medium: rgba(255, 255, 255, 0.65);
-        --white-overlay-light: rgba(255, 255, 255, 0.40);
-        --shadow-soft: 0 8px 32px rgba(163, 233, 255, 0.2);
+        --white-overlay-strong: rgba(255, 255, 255, 0.90);
+        --white-overlay-medium: rgba(255, 255, 255, 0.70);
+        --shadow-soft: 0 8px 32px rgba(74, 0, 224, 0.08);
     }
 
     /* Core Animation for Holographic Canvas */
@@ -346,9 +350,9 @@ def inject_full_holo_css():
         100% { transform: translateY(0px) scale(1); }
     }
 
-    /* MAIN HOLOGRAPHIC CANVAS WITH NOISE FOIL TEXTURE */
+    /* MAIN HOLOGRAPHIC CANVAS (PASTEL) WITH NOISE FOIL TEXTURE */
     html, body, .stApp, [data-testid="stAppViewContainer"] {
-        background: var(--holo-grad) !important;
+        background: var(--holo-bg-grad) !important;
         background-size: 300% 300% !important;
         animation: holo-mesh-bg 20s ease-in-out infinite !important;
         font-family: 'Manrope', sans-serif !important;
@@ -387,36 +391,34 @@ def inject_full_holo_css():
         font-family: 'Space Grotesk', sans-serif !important;
         color: var(--text-main) !important;
         letter-spacing: 0.02em;
-        font-weight: 500 !important;
+        font-weight: 600 !important;
     }
 
-    /* Holographic Accent Text */
+    /* Holographic Accent Text (DARK/VIVID for Contrast) */
     .holo-text {
-        background: var(--holo-grad);
+        background: var(--holo-text-grad);
         background-size: 200% auto;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         animation: holo-mesh-bg 4s linear infinite;
-        font-weight: 600;
+        font-weight: 700;
     }
 
     /* Navbar / Sidebar (Foil Effect) */
     header[data-testid="stHeader"] { background-color: transparent !important; z-index: 99 !important; }
     [data-testid="stSidebar"] {
-        background: linear-gradient(to bottom, var(--white-overlay-strong), var(--white-overlay-medium)), var(--holo-grad) !important;
+        background: linear-gradient(to bottom, var(--white-overlay-strong), var(--white-overlay-medium)), var(--holo-bg-grad) !important;
         background-size: 100% 100%, 300% 300% !important;
         animation: holo-mesh-bg 20s ease-in-out infinite !important;
         backdrop-filter: blur(15px);
-        border-right: 1px solid rgba(255,255,255,0.6);
-        box-shadow: 4px 0 25px rgba(201, 179, 255, 0.2);
+        border-right: 1px solid rgba(255,255,255,0.8);
+        box-shadow: 4px 0 25px rgba(142, 45, 226, 0.05);
     }
     [data-testid="collapsedControl"] {
         display: flex !important; visibility: visible !important;
-        background: linear-gradient(var(--white-overlay-strong), var(--white-overlay-strong)) padding-box, var(--holo-grad) border-box !important;
-        border: 2px solid transparent !important;
-        background-size: 100% 100%, 200% auto !important;
-        animation: holo-mesh-bg 5s linear infinite !important;
-        color: var(--text-main) !important;
+        background: var(--white-overlay-strong) !important;
+        border: 1px solid rgba(142, 45, 226, 0.3) !important;
+        color: #4A00E0 !important;
         border-radius: 50px !important;
         margin: 1rem !important; z-index: 100 !important;
         box-shadow: var(--shadow-soft) !important;
@@ -429,7 +431,7 @@ def inject_full_holo_css():
     .hero-text { 
         font-family: 'Space Grotesk', sans-serif !important; 
         font-size: 76px; 
-        font-weight: 500; 
+        font-weight: 600; 
         line-height: 1.1; 
         color: var(--text-main); 
         margin-bottom: 24px;
@@ -447,7 +449,7 @@ def inject_full_holo_css():
     .section-title { 
         font-family: 'Space Grotesk', sans-serif !important; 
         font-size: 34px; 
-        font-weight: 500; 
+        font-weight: 600; 
         margin-bottom: 40px; 
         color: var(--text-main);
         letter-spacing: -0.5px;
@@ -455,15 +457,13 @@ def inject_full_holo_css():
 
     /* FOIL EFFECT CARDS (Gradient Base + White Overlay) */
     .bento, [data-testid="stVerticalBlockBorderWrapper"], [data-testid="stExpander"] {
-        background: linear-gradient(135deg, rgba(255,255,255,0.65), rgba(255,255,255,0.85)), var(--holo-grad) !important;
-        background-size: 100% 100%, 300% 300% !important;
-        animation: holo-mesh-bg 15s ease-in-out infinite alternate !important;
-        backdrop-filter: blur(12px) !important;
-        -webkit-backdrop-filter: blur(12px) !important;
-        border: 1px solid rgba(255,255,255,0.9) !important;
-        box-shadow: 0 10px 40px rgba(201, 179, 255, 0.15) !important;
+        background: var(--white-overlay-strong) !important;
+        backdrop-filter: blur(15px) !important;
+        -webkit-backdrop-filter: blur(15px) !important;
+        border: 1px solid #FFFFFF !important;
+        box-shadow: var(--shadow-soft) !important;
         border-radius: 20px !important; 
-        transition: all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+        transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
         overflow: hidden;
         padding: 40px !important;
         position: relative;
@@ -472,16 +472,14 @@ def inject_full_holo_css():
     
     /* Hover effects for Cards */
     .bento:hover, [data-testid="stVerticalBlockBorderWrapper"]:hover, [data-testid="stExpander"]:hover {
-        transform: translateY(-5px) !important;
-        background: linear-gradient(135deg, rgba(255,255,255,0.5), rgba(255,255,255,0.75)), var(--holo-grad) !important;
-        background-size: 100% 100%, 300% 300% !important;
-        box-shadow: 0 15px 50px rgba(163, 233, 255, 0.4) !important;
+        transform: translateY(-4px) !important;
+        box-shadow: 0 15px 40px rgba(142, 45, 226, 0.15) !important;
     }
 
     /* Accordion Details */
     [data-testid="stExpander"] summary {
         font-family: 'Space Grotesk', sans-serif !important;
-        font-weight: 500 !important;
+        font-weight: 600 !important;
         font-size: 18px !important;
         color: var(--text-main) !important;
         padding: 24px 32px !important;
@@ -489,110 +487,137 @@ def inject_full_holo_css():
         transition: all 0.4s ease !important;
     }
     [data-testid="stExpander"] summary:hover {
-        background-color: rgba(255,255,255,0.4) !important;
+        background-color: rgba(74, 0, 224, 0.05) !important;
     }
     [data-testid="stExpanderDetails"] {
         padding: 8px 32px 32px 32px !important;
-        border-top: 1px solid rgba(255,255,255,0.6) !important;
-        background-color: rgba(255,255,255,0.2) !important;
+        border-top: 1px solid rgba(74, 0, 224, 0.1) !important;
     }
 
-    /* KPI Cards */
-    .kpi-big-val { font-family: 'Space Grotesk', sans-serif; font-size: 80px; font-weight: 500; line-height: 1; color: var(--text-main); letter-spacing: -2px;}
-    .kpi-big-title { font-size: 14px; font-weight: 600; color: var(--text-muted); margin-top: 16px; letter-spacing: 2px; text-transform: uppercase;}
-    .kpi-small-val { font-family: 'Space Grotesk', sans-serif; font-size: 50px; font-weight: 500; line-height: 1; color: var(--text-main); letter-spacing: -1px;}
-    .kpi-small-title { font-size: 13px; font-weight: 600; color: var(--text-muted); margin-top: 12px; letter-spacing: 1px; text-transform: uppercase;}
+    /* KPI Cards using Dark Vivid Gradient */
+    .kpi-big-val { 
+        font-family: 'Space Grotesk', sans-serif; 
+        font-size: 80px; 
+        font-weight: 600; 
+        line-height: 1; 
+        letter-spacing: -2px;
+        background: var(--holo-text-grad);
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: holo-mesh-bg 5s linear infinite;
+        display: inline-block;
+    }
+    .kpi-big-title { font-size: 14px; font-weight: 700; color: var(--text-muted); margin-top: 16px; letter-spacing: 2px; text-transform: uppercase;}
+    .kpi-small-val { 
+        font-family: 'Space Grotesk', sans-serif; 
+        font-size: 50px; 
+        font-weight: 600; 
+        line-height: 1; 
+        letter-spacing: -1px;
+        background: var(--holo-text-grad);
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: holo-mesh-bg 5s linear infinite;
+        display: inline-block;
+    }
+    .kpi-small-title { font-size: 13px; font-weight: 700; color: var(--text-muted); margin-top: 12px; letter-spacing: 1px; text-transform: uppercase;}
     
     /* Card Content Typography */
     .card-meta { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-bottom: 24px; letter-spacing: 0.5px;}
-    .card-section { font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 600; text-transform: uppercase; color: var(--text-main); margin-top: 40px; margin-bottom: 12px; letter-spacing: 1.5px;}
+    .card-section { font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700; text-transform: uppercase; color: var(--text-main); margin-top: 40px; margin-bottom: 12px; letter-spacing: 1.5px;}
     .card-body { font-size: 15px; font-weight: 400; line-height: 1.8; color: var(--text-main);}
     
     /* Glass Badges */
-    .badge { display: inline-block; padding: 6px 14px; border-radius: 40px; font-size: 12px; font-weight: 600; margin-right: 12px; margin-bottom: 8px; letter-spacing: 0.5px; border: 1px solid rgba(255,255,255,0.9); background: rgba(255,255,255,0.4); backdrop-filter: blur(5px);}
-    .badge-status-Pending { color: #8A6FD1; }
-    .badge-status-Verified { color: #2C8C6B; }
-    .badge-status-NeedsRevision { color: #A67B27; }
-    .badge-status-Rejected { color: #C95B9E; }
-    .badge-kategori { color: var(--text-muted); }
-    .badge-tipe { color: var(--text-muted); }
+    .badge { display: inline-block; padding: 6px 14px; border-radius: 40px; font-size: 12px; font-weight: 700; margin-right: 12px; margin-bottom: 8px; letter-spacing: 0.5px; border: 1px solid rgba(142, 45, 226, 0.2); background: rgba(142, 45, 226, 0.05);}
+    .badge-status-Pending { color: #8E2DE2; }
+    .badge-status-Verified { color: #0052D4; }
+    .badge-status-NeedsRevision { color: #B38800; }
+    .badge-status-Rejected { color: #E100FF; }
+    .badge-kategori { color: var(--text-muted); border-color: rgba(0,0,0,0.1); background:transparent;}
+    .badge-tipe { color: var(--text-muted); border-color: rgba(0,0,0,0.1); background:transparent;}
     
-    /* GDrive Button */
-    .gdrive-link-btn { display: inline-flex; align-items: center; gap: 10px; background-color: rgba(255,255,255,0.6); color: var(--text-main) !important; padding: 12px 24px; border-radius: 40px; font-weight: 600; font-size: 14px; text-decoration: none !important; margin-top: 32px; transition: all 0.4s ease; border: 1px solid rgba(255,255,255,0.9); letter-spacing: 0.5px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);}
+    /* GDrive Button (Dark Gradient Hover) */
+    .gdrive-link-btn { display: inline-flex; align-items: center; gap: 10px; background-color: #FFFFFF; color: #4A00E0 !important; padding: 12px 24px; border-radius: 40px; font-weight: 700; font-size: 14px; text-decoration: none !important; margin-top: 32px; transition: all 0.4s ease; border: 1px solid rgba(74, 0, 224, 0.3); letter-spacing: 0.5px; box-shadow: 0 4px 15px rgba(74, 0, 224, 0.05);}
     .gdrive-link-btn:hover { 
-        background-color: #FFFFFF;
-        box-shadow: 0 8px 25px rgba(163, 233, 255, 0.4);
+        background: var(--holo-text-grad) !important;
+        background-size: 200% auto !important;
+        color: #FFFFFF !important;
+        box-shadow: 0 8px 25px rgba(74, 0, 224, 0.25);
         transform: translateY(-2px);
+        border-color: transparent !important;
     }
     
-    /* Inputs inside Foil Container */
+    /* Inputs inside Container */
     .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div { 
-        background-color: rgba(255,255,255,0.6) !important; 
-        border: 1px solid rgba(255,255,255,0.8) !important; 
+        background-color: #FFFFFF !important; 
+        border: 1px solid rgba(0,0,0,0.1) !important; 
         border-radius: 12px !important; 
         padding: 16px 20px !important; 
         font-size: 15px; font-weight: 500; 
         color: var(--text-main) !important; 
-        transition: all 0.4s ease; 
-        backdrop-filter: blur(5px);
+        transition: all 0.3s ease; 
     }
     .stTextInput input:focus, .stTextArea textarea:focus, .stSelectbox div[data-baseweb="select"] > div:focus-within { 
-        background-color: rgba(255,255,255,0.95) !important;
-        border-color: #A3E9FF !important;
-        box-shadow: 0 0 0 3px rgba(163, 233, 255, 0.4) !important;
+        border-color: #8E2DE2 !important;
+        box-shadow: 0 0 0 3px rgba(142, 45, 226, 0.15) !important;
     }
     
-    /* SOLID HOLOGRAPHIC BUTTONS */
+    /* DARK VIVID HOLOGRAPHIC BUTTONS (Always readable) */
     .stButton button, .stDownloadButton button, [data-testid="stFormSubmitButton"] button { 
-        background: var(--holo-grad) !important; 
+        background: var(--holo-text-grad) !important; 
         background-size: 200% auto !important;
-        color: var(--text-main) !important; 
+        color: #FFFFFF !important; /* White text for contrast */
         border-radius: 40px !important; 
         padding: 14px 28px !important; 
-        font-weight: 600 !important; 
+        font-weight: 700 !important; 
         font-size: 15px !important; 
         border: none !important; 
         width: 100%; 
         transition: all 0.4s ease !important; 
         font-family: 'Space Grotesk', sans-serif !important;
         letter-spacing: 1px;
-        box-shadow: 0 8px 25px rgba(201, 179, 255, 0.4) !important;
+        box-shadow: 0 6px 20px rgba(74, 0, 224, 0.2) !important;
     }
     .stButton button:hover, .stDownloadButton button:hover, [data-testid="stFormSubmitButton"] button:hover { 
-        animation: gradient-shift 2s linear infinite !important; /* Shimmer effect */
-        box-shadow: 0 12px 35px rgba(163, 233, 255, 0.6) !important; 
+        animation: holo-mesh-bg 2s linear infinite !important; /* Shimmer effect */
+        box-shadow: 0 10px 30px rgba(74, 0, 224, 0.4) !important; 
         transform: translateY(-3px); 
     }
 
+    /* Role-based button overrides */
+    div[data-testid="stButton"] button:has(p:contains("Reject")) { background: #FF0055 !important; color:#FFF !important;}
+    div[data-testid="stButton"] button:has(p:contains("Reject")):hover { box-shadow: 0 8px 25px rgba(255, 0, 85, 0.4) !important;}
+    div[data-testid="stButton"] button:has(p:contains("Verify")) { background: #00C9FF !important; color:#FFF !important;}
+    div[data-testid="stButton"] button:has(p:contains("Verify")):hover { box-shadow: 0 8px 25px rgba(0, 201, 255, 0.4) !important;}
+
     /* Sidebar Radio */
-    div[role="radiogroup"] > label { background-color: transparent !important; padding: 14px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; color: var(--text-muted); transition: 0.4s; letter-spacing: 0.5px;}
-    div[role="radiogroup"] > label:hover { color: var(--text-main); background: rgba(255,255,255,0.4) !important;}
+    div[role="radiogroup"] > label { background-color: transparent !important; padding: 14px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--text-muted); transition: 0.3s; letter-spacing: 0.5px;}
+    div[role="radiogroup"] > label:hover { color: var(--text-main); background: rgba(0,0,0,0.02) !important;}
     div[role="radiogroup"] > label[data-checked="true"] { 
-        background: rgba(255,255,255,0.8) !important; 
-        color: var(--text-main) !important; 
-        border-bottom: 2px solid transparent;
-        border-image: var(--holo-grad) 1;
-        border-left: none; border-top: none; border-right: none;
-        border-radius: 0;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        background: #FFFFFF !important; 
+        color: #4A00E0 !important; 
+        border-left: 4px solid #4A00E0;
+        border-radius: 0 8px 8px 0;
+        box-shadow: 0 4px 15px rgba(74, 0, 224, 0.05);
     }
     
-    [data-testid="stFileUploadDropzone"] { border-radius: 16px !important; border: 2px dashed rgba(255,255,255,0.9) !important; background-color: rgba(255,255,255,0.4) !important; transition: all 0.4s; }
+    [data-testid="stFileUploadDropzone"] { border-radius: 16px !important; border: 2px dashed rgba(74, 0, 224, 0.3) !important; background-color: #FFFFFF !important; transition: all 0.3s; }
     [data-testid="stFileUploadDropzone"]:hover { 
-        background-color: rgba(255,255,255,0.8) !important;
-        box-shadow: 0 8px 25px rgba(201, 179, 255, 0.3) !important;
+        background-color: rgba(74, 0, 224, 0.02) !important;
+        border-color: #8E2DE2 !important;
     }
     
-    /* Custom Organic Wave Divider */
+    /* Custom Wave Divider using Dark Vivid Gradient */
     .holo-wave-divider {
         width: 100%;
         height: 60px;
         margin: 40px 0;
-        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 1200 120' preserveAspectRatio='none' xmlns='[http://www.w3.org/2000/svg'%3E%3Cpath](http://www.w3.org/2000/svg'%3E%3Cpath) d='M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z' fill='url(%23holoGrad)' fill-opacity='0.5'/%3E%3Cdefs%3E%3ClinearGradient id='holoGrad' x1='0%25' y1='0%25' x2='100%25' y2='0%25'%3E%3Cstop offset='0%25' stop-color='%23FFB3E6'/%3E%3Cstop offset='33%25' stop-color='%23A3E9FF'/%3E%3Cstop offset='66%25' stop-color='%23C9B3FF'/%3E%3Cstop offset='100%25' stop-color='%23FFF3B3'/%3E%3C/linearGradient%3E%3C/defs%3E%3C/svg%3E");
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 1200 120' preserveAspectRatio='none' xmlns='[http://www.w3.org/2000/svg'%3E%3Cpath](http://www.w3.org/2000/svg'%3E%3Cpath) d='M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z' fill='url(%23darkGrad)' fill-opacity='0.2'/%3E%3Cdefs%3E%3ClinearGradient id='darkGrad' x1='0%25' y1='0%25' x2='100%25' y2='0%25'%3E%3Cstop offset='0%25' stop-color='%234A00E0'/%3E%3Cstop offset='50%25' stop-color='%23E100FF'/%3E%3Cstop offset='100%25' stop-color='%2300C9FF'/%3E%3C/linearGradient%3E%3C/defs%3E%3C/svg%3E");
         background-size: cover;
         background-repeat: no-repeat;
         background-position: center;
-        opacity: 0.8;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -613,8 +638,8 @@ def render_knowledge_card_content(row):
     
     gdrive_link = row['gdrive_link'] if 'gdrive_link' in row.keys() and row['gdrive_link'] else ""
     gdrive_html = f"""<div><a href="{gdrive_link}" target="_blank" class="gdrive-link-btn">
-        <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-        Buka Arsip Original
+        <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        Buka Arsip Dokumen Asli
     </a></div>""" if gdrive_link else ""
     
     kat_badge = f"<span class='badge badge-kategori'>✦ {row.get('kategori', 'Area perbaikan')}</span>"
@@ -626,10 +651,10 @@ def render_knowledge_card_content(row):
     card_html = f"""
     <div>
         <div class="card-meta">
-            Eksekutor: {row['manajer_proyek']} &nbsp; • &nbsp; 
-            Owner: {owner_text} &nbsp; • &nbsp; 
-            Dept: {dept_text} &nbsp; • &nbsp; 
-            Date: {row['upload_date']}
+            Eksekutor: <span style="color:#1A1A24; font-weight:700;">{row['manajer_proyek']}</span> &nbsp; • &nbsp; 
+            Owner: <span style="color:#1A1A24; font-weight:700;">{owner_text}</span> &nbsp; • &nbsp; 
+            Dept: <span style="color:#1A1A24; font-weight:700;">{dept_text}</span> &nbsp; • &nbsp; 
+            Date: <span style="color:#1A1A24; font-weight:700;">{row['upload_date']}</span>
         </div>
         <div style="margin-bottom: 32px;">
             <span class="badge badge-status-{status_str}">Status: {row['status']}</span>
@@ -639,17 +664,17 @@ def render_knowledge_card_content(row):
         <div class="card-section">Identifikasi Anomali</div>
         <div class="card-body">{deskripsi}</div>
         
-        <div class="holo-wave-divider" style="height:30px; margin: 24px 0; opacity:0.5;"></div>
+        <div class="holo-wave-divider" style="height:20px; margin: 24px 0;"></div>
         
         <div class="card-section">Dampak / Spektrum Skala</div>
         <div class="card-body">{dampak}</div>
         
-        <div class="holo-wave-divider" style="height:30px; margin: 24px 0; opacity:0.5;"></div>
+        <div class="holo-wave-divider" style="height:20px; margin: 24px 0;"></div>
         
-        <div class="card-section">Protokol Solusi Cerdas</div>
-        <div class="card-body" style="font-weight: 600; color: #1A1A24;">{pencegahan}</div>
+        <div class="card-section">Protokol Solusi Efektif</div>
+        <div class="card-body" style="font-weight: 700; color: #4A00E0;">{pencegahan}</div>
         
-        <div class="holo-wave-divider" style="height:30px; margin: 24px 0; opacity:0.5;"></div>
+        <div class="holo-wave-divider" style="height:20px; margin: 24px 0;"></div>
         
         <div class="card-section">Limitasi & Tantangan</div>
         <div class="card-body">{tantangan}</div>
@@ -657,8 +682,8 @@ def render_knowledge_card_content(row):
     </div>"""
     st.markdown(card_html, unsafe_allow_html=True)
 
-def render_empty_state(title="Hologram Nihil", subtitle="Tidak ada data yang direfraksikan di sektor ini. Mulai inisiasi data baru."):
-    st.markdown(f"""<div class="bento" style="text-align: center; padding: 120px 40px;"><div class="section-title holo-text" style="margin-bottom: 16px; font-size: 32px; border:none;">{title}</div><div class="card-body" style="color: var(--text-muted); font-weight:400;">{subtitle}</div></div>""", unsafe_allow_html=True)
+def render_empty_state(title="Data Nihil", subtitle="Tidak ada data yang direkam di sektor ini. Mulai inisiasi data baru untuk mengisi basis pengetahuan."):
+    st.markdown(f"""<div class="bento" style="text-align: center; padding: 120px 40px;"><div class="section-title holo-text" style="margin-bottom: 16px; font-size: 32px; border:none;">{title}</div><div class="card-body" style="color: var(--text-muted); font-weight:500;">{subtitle}</div></div>""", unsafe_allow_html=True)
 
 # ==============================================================================
 # 7. PAGE VIEWS
@@ -666,7 +691,7 @@ def render_empty_state(title="Hologram Nihil", subtitle="Tidak ada data yang dir
 def view_login():
     st.markdown("""
         <div style="text-align: center; margin-top: 15vh; margin-bottom: 60px;">
-            <div class="hero-text">KMS <span class="holo-text">Portal.</span></div>
+            <div class="hero-text"><span class="holo-text">Knowledge</span><br>Management System.</div>
             <div class="hero-sub" style="margin: 0 auto;">Pusat Integrasi Pembelajaran Organisasi PT Bukit Asam Tbk.</div>
         </div>
     """, unsafe_allow_html=True)
@@ -674,7 +699,7 @@ def view_login():
     col1, col2, col3 = st.columns([1, 1.2, 1])
     with col2:
         with st.container(border=True):
-            st.markdown("<div style='text-align:center; font-family:\"Space Grotesk\", sans-serif; font-size: 18px; margin-bottom: 32px; font-weight: 500; letter-spacing: 0.5px;'>Otentikasi Akses Keamanan</div>", unsafe_allow_html=True)
+            st.markdown("<div style='text-align:center; font-family:\"Space Grotesk\", sans-serif; font-size: 18px; margin-bottom: 32px; font-weight: 600; letter-spacing: 0.5px;'>Otentikasi Akses Keamanan</div>", unsafe_allow_html=True)
             username = st.text_input("Username", placeholder="ID Personel...")
             password = st.text_input("Password", type="password", placeholder="Kata Sandi Enkripsi...")
             
@@ -711,24 +736,24 @@ def view_dashboard(repo):
     with c1:
         with st.container(border=True):
             st.markdown("<div class='section-title' style='font-size: 22px;'>Distribusi Status</div>", unsafe_allow_html=True)
-            fig1 = px.pie(df, names="status", hole=0.8, color="status", color_discrete_map={'Verified': '#A3E9FF', 'Pending Review': '#C9B3FF', 'Needs Revision': '#FFF3B3', 'Rejected': '#FFB3E6'})
+            fig1 = px.pie(df, names="status", hole=0.8, color="status", color_discrete_map={'Verified': '#0052D4', 'Pending Review': '#8E2DE2', 'Needs Revision': '#E100FF', 'Rejected': '#FF0055'})
             fig1.update_layout(showlegend=False, height=340, margin=dict(t=20, b=20, l=10, r=10))
             st.plotly_chart(fig1, use_container_width=True)
     with c2:
         with st.container(border=True):
             st.markdown("<div class='section-title' style='font-size: 22px;'>Berdasarkan Divisi</div>", unsafe_allow_html=True)
-            fig2 = px.histogram(df, y="tipe", color="tipe", color_discrete_sequence=["#FFB3E6", "#A3E9FF", "#C9B3FF", "#FFF3B3", "#B3E6FF"]) 
+            fig2 = px.histogram(df, y="tipe", color="tipe", color_discrete_sequence=["#8E2DE2", "#4A00E0", "#0052D4", "#E100FF", "#00C9FF"]) 
             fig2.update_layout(showlegend=False, xaxis_title="", yaxis_title="", height=340, margin=dict(t=20, b=20, l=10, r=10))
             st.plotly_chart(fig2, use_container_width=True)
 
 def view_browse(repo):
-    st.markdown("<div class='section-title'>Eksplorasi <span class='holo-text'>Arsip.</span></div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>Eksplorasi <span class='holo-text'>Arsip Terpusat.</span></div>", unsafe_allow_html=True)
     df = repo.fetch_all()
     
     with st.container(border=True):
-        st.markdown("<div style='font-family: \"Space Grotesk\", sans-serif; font-weight: 500; font-size: 18px; margin-bottom: 24px;'>Matriks Filter Pencarian</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-family: \"Space Grotesk\", sans-serif; font-weight: 600; font-size: 18px; margin-bottom: 24px;'>Matriks Filter Pencarian</div>", unsafe_allow_html=True)
         
-        search_query = st.text_input("Kata Kunci Spesifik", placeholder="Ketik kata sandi pencarian...", label_visibility="collapsed")
+        search_query = st.text_input("Kata Kunci Spesifik", placeholder="Ketik metrik pencarian (nama proyek, masalah, solusi)...", label_visibility="collapsed")
         
         f1, f2, f3 = st.columns(3)
         with f1:
@@ -751,9 +776,9 @@ def view_browse(repo):
     st.markdown("<div class='holo-wave-divider'></div>", unsafe_allow_html=True)
     
     if df.empty: 
-        render_empty_state("Pencarian Buntu", "Sistem tidak mendeteksi rekaman yang sinkron dengan filter Anda.")
+        render_empty_state("Pencarian Buntu", "Sistem tidak mendeteksi rekaman yang selaras dengan filter spesifik Anda.")
     else:
-        st.markdown(f"<div style='font-size: 15px; font-weight:500; color: var(--text-muted); margin-bottom: 24px; letter-spacing: 0.5px;'>Menemukan <b>{len(df)}</b> rekaman holografik.</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size: 15px; font-weight:600; color: var(--text-muted); margin-bottom: 24px; letter-spacing: 0.5px;'>Menemukan <b>{len(df)}</b> rekaman data.</div>", unsafe_allow_html=True)
         for _, row in df.iterrows(): 
             with st.expander(f"{row['nama_proyek']}  —  {row['tipe']}"):
                 render_knowledge_card_content(row)
@@ -770,7 +795,7 @@ def view_upload(repo):
     if 'uploaded_filename' not in st.session_state: st.session_state.uploaded_filename = ""
     
     if st.session_state.save_success:
-        st.success("Tersimpan secara permanen. Menunggu otorisasi kurasi.")
+        st.success("Data tersimpan permanen. Draf diteruskan ke modul otorisasi PMO.")
         st.session_state.save_success = False
         
     with st.container(border=True):
@@ -778,7 +803,7 @@ def view_upload(repo):
         uploaded_file = st.file_uploader("Unggah dokumen bukti otentik (PDF, DOCX, TXT)", type=["pdf", "txt", "docx"], label_visibility="collapsed")
         
         if uploaded_file and st.button("MULAI PEMINDAIAN AI"):
-            with st.spinner("Memproses sinkronisasi data teks..."):
+            with st.spinner("Memproses sintesis data teks..."):
                 file_bytes = io.BytesIO(uploaded_file.read())
                 st.session_state.uploaded_file_bytes = file_bytes
                 st.session_state.uploaded_filename = uploaded_file.name
@@ -792,7 +817,7 @@ def view_upload(repo):
                     st.session_state.ai_tantangan = ai_result["tantangan"]
                     st.rerun() 
                 else:
-                    st.error("Gagal mengurai teks dokumen.")
+                    st.error("Gagal mengurai teks. Format dokumen mungkin korup.")
                     
     st.markdown("<div class='holo-wave-divider'></div>", unsafe_allow_html=True)
     
@@ -813,7 +838,7 @@ def view_upload(repo):
             with c2:
                 tipe = st.selectbox("Divisi Utama (Folder Awan GDrive)", TIPE_DIVISI_OPTIONS)
                 
-            deskripsi_isu = st.text_area("Deskripsi Anomali", value=st.session_state.ai_deskripsi, placeholder="Uraikan anomali operasional...", height=120)
+            deskripsi_isu = st.text_area("Deskripsi Kendala", value=st.session_state.ai_deskripsi, placeholder="Uraikan anomali operasional...", height=120)
             dampak_isu = st.text_area("Dampak Skala Proyek", value=st.session_state.ai_dampak, placeholder="Implikasi biaya atau timeline...", height=120)
             aktivitas_pencegahan = st.text_area("Protokol Mitigasi", value=st.session_state.ai_pencegahan, placeholder="Langkah konkrit yang direkomendasikan...", height=120)
             tantangan = st.text_area("Risiko Lanjutan", value=st.session_state.ai_tantangan, placeholder="Limitasi dari solusi yang diusulkan...", height=120)
@@ -865,7 +890,7 @@ def view_revision(repo):
     df = repo.fetch_all()
     rev_df = df[df['status'] == 'Needs Revision']
     if rev_df.empty:
-        render_empty_state("Antrean Steril", "Tidak ada dokumen anomali yang menuntut perbaikan.")
+        render_empty_state("Antrean Steril", "Tidak ada dokumen anomali yang menuntut perbaikan per detik ini.")
         return
 
     for _, row in rev_df.iterrows():
@@ -877,7 +902,7 @@ def view_revision(repo):
 
         with st.container(border=True):
             st.markdown(f"<div class='section-title' style='font-size: 26px; margin-bottom: 24px;'>{row['nama_proyek']}</div>", unsafe_allow_html=True)
-            st.markdown(f"""<div style="background: rgba(255, 255, 255, 0.9); border: 1px solid #FFF3B3; padding: 24px; border-radius: 12px; margin-bottom: 32px; box-shadow: 0 4px 15px rgba(255,243,179,0.5);"><div style="font-family:'Space Grotesk'; font-weight: 600; color: #D4B04D; margin-bottom: 8px; font-size: 13px; text-transform: uppercase; letter-spacing:1px;">Umpan Balik Auditor PMO</div><div style="color: var(--text-main); font-size: 15px; font-weight:500; line-height: 1.6;">{row['reviewer_notes']}</div></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div style="background: rgba(255, 255, 255, 0.9); border: 1px solid #FFD966; padding: 24px; border-radius: 12px; margin-bottom: 32px; box-shadow: 0 4px 15px rgba(255,217,102,0.2);"><div style="font-family:'Space Grotesk'; font-weight: 700; color: #B38800; margin-bottom: 8px; font-size: 13px; text-transform: uppercase; letter-spacing:1px;">Catatan Penolakan PMO</div><div style="color: var(--text-main); font-size: 15px; font-weight:500; line-height: 1.6;">{row['reviewer_notes']}</div></div>""", unsafe_allow_html=True)
             
             with st.form(f"form_rev_{rid}", border=False):
                 nama_proyek = st.text_input("Identitas Proyek", value=row['nama_proyek'])
@@ -930,7 +955,7 @@ def view_approval(repo):
     pending_df = df[df['status'] == 'Pending Review']
     
     if pending_df.empty:
-        render_empty_state("Antrean Lengang", "Seluruh matriks data telah disahkan dan diarsipkan.")
+        render_empty_state("Antrean Bersih", "Seluruh matriks draf telah disahkan dan diarsipkan secara rapi.")
         return
         
     for _, row in pending_df.iterrows():
@@ -963,7 +988,7 @@ def view_export(repo):
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine="openpyxl") as writer: df.to_excel(writer, index=False, sheet_name="Register")
                 st.download_button(label="EKSPOR BENTUK .XLSX", data=output.getvalue(), file_name=f"PTBA_Lessons_Learned.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-            except Exception: st.markdown("<div style='text-align: center; font-size: 14px; color:var(--text-muted); margin-top: 16px;'>Library Python 'openpyxl' terdeteksi nonaktif untuk fungsionalitas Excel.</div>", unsafe_allow_html=True)
+            except Exception: st.markdown("<div style='text-align: center; font-size: 14px; color:var(--text-muted); margin-top: 16px; font-weight:600;'>Library Python 'openpyxl' terdeteksi nonaktif untuk fungsionalitas Excel.</div>", unsafe_allow_html=True)
 
 # ==============================================================================
 # 8. MAIN & ROUTING
@@ -991,14 +1016,14 @@ def main():
         allowed_pages.extend(["Approval", "Export"])
 
     with st.sidebar:
-        st.markdown("<div style='font-family:\"Space Grotesk\", sans-serif; font-size: 24px; font-weight: 600; letter-spacing: -1px; color: var(--text-main); margin-bottom: 32px;'><span class='holo-text'>KMS</span> Platform.</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-family:\"Space Grotesk\", sans-serif; font-size: 24px; font-weight: 700; letter-spacing: -1px; color: var(--text-main); margin-bottom: 32px;'><span class='holo-text'>KMS</span> Platform.</div>", unsafe_allow_html=True)
         
         navigation = st.radio("Sektor Navigasi", allowed_pages, label_visibility="collapsed")
         
         st.write("")
         st.write("")
         st.write("")
-        st.markdown(f"<div style='font-family:\"Manrope\", sans-serif; font-size: 14px; font-weight: 500; color: var(--text-main); margin-bottom: 24px; padding: 12px; background: rgba(255,255,255,0.7); border-radius:12px;'>Otentikasi:<br><span style='font-family:\"Space Grotesk\"; font-size:16px; font-weight:600;'>{st.session_state.username}</span><br>Clearance: {role}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-family:\"Manrope\", sans-serif; font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 24px; padding: 12px; background: rgba(255,255,255,0.9); border-radius:12px; border: 1px solid rgba(142, 45, 226, 0.2);'>Otentikasi:<br><span style='font-family:\"Space Grotesk\"; font-size:16px; font-weight:700; color:#4A00E0;'>{st.session_state.username}</span><br>Clearance: {role}</div>", unsafe_allow_html=True)
         if st.button("TERMINASI SESI"):
             st.session_state.logged_in = False
             st.session_state.role = None
