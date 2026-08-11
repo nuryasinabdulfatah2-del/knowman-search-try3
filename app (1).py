@@ -83,10 +83,11 @@ ALL_DEPARTMENTS_OPTIONS = [
 ]
 
 DIVISION_FOLDERS = {
-    "Human Resources (HR)": "14Q949Rt_UNyEKYenuneBZXlgzznUMOnY",
-    "Information Technology (IT)": "1-bPwqpCeY4yRtdGpzfZ4UmjmQKSTk7AV",
-    "Finance": "1Pdkc9LD7XFkFhioznFWIZozp8lyqb_q-",
-    "Operations": "1kVAq06Jep0dLL-dTOpDLqtxR3iugcB4F",
+    "Project Management Office Division": "1-bPwqpCeY4yRtdGpzfZ4UmjmQKSTk7AV,
+    "Logistics & Infrastructure Development Sub-Division": "1w7nie08G8ZlXpLJzMV9V-7MytF2LIWr9",
+    "Mine Development Sub-Division": "1kVAq06Jep0dLL-dTOpDLqtxR3iugcB4F",
+    "Energy Business Development Sub-Division": "14Q949Rt_UNyEKYenuneBZXlgzznUMOnY",
+    "Downstream Business Development Sub-Division":"12Hbi8bnngOB6q_IBA9O-jZUNpUJSp9aV",
     "Lainnya": "1Pdkc9LD7XFkFhioznFWIZozp8lyqb_q-" 
 }
 
@@ -682,7 +683,7 @@ def render_knowledge_card_content(row):
     </div>"""
     st.markdown(card_html, unsafe_allow_html=True)
 
-def render_empty_state(title="Data Nihil", subtitle="Tidak ada data yang direkam di sektor ini. Mulai inisiasi data baru untuk mengisi basis pengetahuan."):
+def render_empty_state(title="Data Tidak Ditemukan", subtitle="Belum ada data yang diunggah. Mulai inisiasi data baru untuk mengisi basis pengetahuan."):
     st.markdown(f"""<div class="bento" style="text-align: center; padding: 120px 40px;"><div class="section-title holo-text" style="margin-bottom: 16px; font-size: 32px; border:none;">{title}</div><div class="card-body" style="color: var(--text-muted); font-weight:500;">{subtitle}</div></div>""", unsafe_allow_html=True)
 
 # ==============================================================================
@@ -717,8 +718,8 @@ def view_login():
 
 def view_dashboard(repo):
     st.markdown("""
-        <div class="hero-text"><span class="holo-text">Lessons Learned</span><br>Intelligence Core.</div>
-        <div class="hero-sub">Platform holistik untuk mendokumentasikan, menganalisis, dan mentransformasi anomali operasional menjadi strategi aset perusahaan.</div>
+        <div class="hero-text"><span class="holo-text">Lessons Learned</span><br>Proyek PT BA</div>
+        <div class="hero-sub">Platform terintegrasi untuk mendokumentasikan, menganalisis, dan mentransformasi isu strategis proyek menjadi strategi perusahaan.</div>
     """, unsafe_allow_html=True)
     df = repo.fetch_all()
     if df.empty:
@@ -747,7 +748,7 @@ def view_dashboard(repo):
             st.plotly_chart(fig2, use_container_width=True)
 
 def view_browse(repo):
-    st.markdown("<div class='section-title'>Eksplorasi <span class='holo-text'>Arsip Terpusat.</span></div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>Eksplorasi <span class='holo-text'>Arsip Terpusat</span></div>", unsafe_allow_html=True)
     df = repo.fetch_all()
     
     with st.container(border=True):
@@ -776,7 +777,7 @@ def view_browse(repo):
     st.markdown("<div class='holo-wave-divider'></div>", unsafe_allow_html=True)
     
     if df.empty: 
-        render_empty_state("Pencarian Buntu", "Sistem tidak mendeteksi rekaman yang selaras dengan filter spesifik Anda.")
+        render_empty_state("Pencarian Tidak Ada", "Sistem tidak mendeteksi rekaman yang selaras dengan filter spesifik Anda.")
     else:
         st.markdown(f"<div style='font-size: 15px; font-weight:600; color: var(--text-muted); margin-bottom: 24px; letter-spacing: 0.5px;'>Menemukan <b>{len(df)}</b> rekaman data.</div>", unsafe_allow_html=True)
         for _, row in df.iterrows(): 
@@ -950,12 +951,12 @@ def view_revision(repo):
                         st.rerun()
 
 def view_approval(repo):
-    st.markdown("<div class='section-title'>Kamar <span class='holo-text'>Kurasi PMO.</span></div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>Reviewer <span class='holo-text'>Menu</span></div>", unsafe_allow_html=True)
     df = repo.fetch_all()
     pending_df = df[df['status'] == 'Pending Review']
     
     if pending_df.empty:
-        render_empty_state("Antrean Bersih", "Seluruh matriks draf telah disahkan dan diarsipkan secara rapi.")
+        render_empty_state("Tidak Ada Antrean", "Seluruh draf telah disahkan dan diarsipkan")
         return
         
     for _, row in pending_df.iterrows():
@@ -975,7 +976,7 @@ def view_approval(repo):
                 if st.button("Sahkan Register", key=f"ver_{row['id']}"): repo.update_status(row['id'], "Verified", notes); st.rerun()
 
 def view_export(repo):
-    st.markdown("<div class='section-title'>Ekstraksi <span class='holo-text'>Master Data.</span></div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>Ekstraksi <span class='holo-text'>Data Proyek</span></div>", unsafe_allow_html=True)
     df = repo.fetch_all()
     if df.empty: return render_empty_state()
     with st.container(border=True):
