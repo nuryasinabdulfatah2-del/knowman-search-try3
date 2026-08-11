@@ -796,7 +796,7 @@ def view_upload(repo):
     if 'uploaded_filename' not in st.session_state: st.session_state.uploaded_filename = ""
     
     if st.session_state.save_success:
-        st.success("Data tersimpan permanen. Draf diteruskan ke modul otorisasi PMO.")
+        st.success("Data telah tersimpan. Terimakasih!")
         st.session_state.save_success = False
         
     with st.container(border=True):
