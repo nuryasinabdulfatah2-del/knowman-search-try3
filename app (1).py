@@ -749,7 +749,7 @@ def view_browse(repo):
         with f1:
             selected_kategori = st.selectbox("Kategori Laporan", ["Semua Kategori"] + KATEGORI_OPTIONS)
         with f2:
-            selected_tipe = st.selectbox("Project Owner", ["Semua Divisi"] + TIPE_DIVISI_OPTIONS)
+            selected_tipe = st.selectbox("Pemilik Proyek / Divisi Utama", ["Semua Divisi"] + TIPE_DIVISI_OPTIONS)
         with f3:
             STATUS_OPTIONS = ["Semua Status", "Verified", "Pending Review", "Needs Revision", "Rejected"]
             selected_status = st.selectbox("Status Verifikasi", STATUS_OPTIONS)
@@ -766,7 +766,7 @@ def view_browse(repo):
     st.markdown("<div class='holo-wave-divider'></div>", unsafe_allow_html=True)
     
     if df.empty: 
-        render_empty_state("Pencarian Tidak Ditemukan", "Sistem tidak mendeteksi dokumen yang selaras dengan filter spesifik Anda.")
+        render_empty_state("Pencarian Buntu", "Sistem tidak mendeteksi rekaman yang selaras dengan filter spesifik Anda.")
     else:
         st.markdown(f"<div style='font-size: 15px; font-weight:600; color: var(--text-muted); margin-bottom: 24px; letter-spacing: 0.5px;'>Menemukan <b>{len(df)}</b> rekaman data.</div>", unsafe_allow_html=True)
         for _, row in df.iterrows(): 
@@ -815,14 +815,14 @@ def view_upload(repo):
         with st.form("entry_form", border=False, clear_on_submit=True):
             c1, c2 = st.columns(2)
             with c1:
-                nama_proyek = st.text_input("Nama Proyek", placeholder="Contoh: Optimalisasi Tambang Pit 1...")
+                nama_proyek = st.text_input("Identitas Proyek", placeholder="Contoh: Optimalisasi Tambang Pit 1...")
             with c2:
                 manajer_proyek = st.text_input("Manajer Pelaksana", placeholder="Nama Penanggung Jawab Eksekusi...")
             
             c3, c4 = st.columns(2)
             with c3:
                 # Field ini akan mengatur Tipe Divisi / Folder Awan GDrive sekaligus menjadi Project Owner di Database
-                tipe = st.selectbox("Project Owner", TIPE_DIVISI_OPTIONS)
+                tipe = st.selectbox("Pemilik Proyek / Divisi Utama (Folder GDrive)", TIPE_DIVISI_OPTIONS)
             with c4:
                 related_department = st.selectbox("Departemen Terkait", ALL_DEPARTMENTS_OPTIONS)
 
@@ -880,7 +880,7 @@ def view_revision(repo):
     df = repo.fetch_all()
     rev_df = df[df['status'] == 'Needs Revision']
     if rev_df.empty:
-        render_empty_state("Tidak Ada Antrean", "Tidak ada dokumen yang perlu diperbaiki")
+        render_empty_state("Antrean Steril", "Tidak ada dokumen anomali yang menuntut perbaikan per detik ini.")
         return
 
     for _, row in rev_df.iterrows():
@@ -904,7 +904,7 @@ def view_revision(repo):
                 c3, c4 = st.columns(2)
                 with c3:
                     tipe_idx = TIPE_DIVISI_OPTIONS.index(row['tipe']) if row['tipe'] in TIPE_DIVISI_OPTIONS else (len(TIPE_DIVISI_OPTIONS)-1)
-                    tipe = st.selectbox("Project Owner", TIPE_DIVISI_OPTIONS, index=tipe_idx)
+                    tipe = st.selectbox("Pemilik Proyek / Divisi Utama (Folder GDrive)", TIPE_DIVISI_OPTIONS, index=tipe_idx)
                 with c4:
                     dept_val = row.get('related_department', '')
                     dept_idx = ALL_DEPARTMENTS_OPTIONS.index(dept_val) if dept_val in ALL_DEPARTMENTS_OPTIONS else 0
@@ -942,7 +942,7 @@ def view_approval(repo):
     pending_df = df[df['status'] == 'Pending Review']
     
     if pending_df.empty:
-        render_empty_state("Tidak Ada Antrean", "Seluruh draf telah disahkan dan diarsipkan.")
+        render_empty_state("Antrean Bersih", "Seluruh matriks draf telah disahkan dan diarsipkan secara rapi.")
         return
         
     for _, row in pending_df.iterrows():
