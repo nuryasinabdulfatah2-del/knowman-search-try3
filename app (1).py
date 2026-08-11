@@ -824,7 +824,7 @@ def view_upload(repo):
             with c3:
                 tipe = st.selectbox("Project Owner / Sub-Divisi", TIPE_DIVISI_OPTIONS)
             with c4:
-                related_department = st.selectbox("Departemen Terkait", ALL_DEPARTMENTS_OPTIONS)
+                related_department = st.selectbox("Satuan Kerja Terkait", ALL_DEPARTMENTS_OPTIONS)
 
             kategori = st.selectbox("Klasifikasi Kategori", KATEGORI_OPTIONS)
                 
