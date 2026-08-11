@@ -749,7 +749,7 @@ def view_browse(repo):
         with f1:
             selected_kategori = st.selectbox("Kategori Laporan", ["Semua Kategori"] + KATEGORI_OPTIONS)
         with f2:
-            selected_tipe = st.selectbox("Pemilik Proyek / Divisi Utama", ["Semua Divisi"] + TIPE_DIVISI_OPTIONS)
+            selected_tipe = st.selectbox("Project Owner / Sub-Divisi", ["Semua Divisi"] + TIPE_DIVISI_OPTIONS)
         with f3:
             STATUS_OPTIONS = ["Semua Status", "Verified", "Pending Review", "Needs Revision", "Rejected"]
             selected_status = st.selectbox("Status Verifikasi", STATUS_OPTIONS)
@@ -822,7 +822,7 @@ def view_upload(repo):
 
             c3, c4 = st.columns(2)
             with c3:
-                tipe = st.selectbox("Pemilik Proyek / Divisi Utama (Folder GDrive)", TIPE_DIVISI_OPTIONS)
+                tipe = st.selectbox("Project Owner / Sub-Divisi", TIPE_DIVISI_OPTIONS)
             with c4:
                 related_department = st.selectbox("Departemen Terkait", ALL_DEPARTMENTS_OPTIONS)
 
@@ -905,7 +905,7 @@ def view_revision(repo):
                 c3, c4 = st.columns(2)
                 with c3:
                     tipe_idx = TIPE_DIVISI_OPTIONS.index(row['tipe']) if row['tipe'] in TIPE_DIVISI_OPTIONS else (len(TIPE_DIVISI_OPTIONS)-1)
-                    tipe = st.selectbox("Pemilik Proyek / Divisi Utama (Folder GDrive)", TIPE_DIVISI_OPTIONS, index=tipe_idx)
+                    tipe = st.selectbox("Project Owner / Sub-Divisi", TIPE_DIVISI_OPTIONS, index=tipe_idx)
                 with c4:
                     dept_val = row.get('related_department', '')
                     dept_idx = ALL_DEPARTMENTS_OPTIONS.index(dept_val) if dept_val in ALL_DEPARTMENTS_OPTIONS else 0
