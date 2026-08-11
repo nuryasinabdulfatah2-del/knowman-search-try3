@@ -692,15 +692,15 @@ def render_empty_state(title="Data Tidak Ditemukan", subtitle="Belum ada data ya
 def view_login():
     st.markdown("""
         <div style="text-align: center; margin-top: 15vh; margin-bottom: 60px;">
-            <div class="hero-text"><span class="holo-text">Knowledge</span><br>Management System.</div>
-            <div class="hero-sub" style="margin: 0 auto;">Pusat Integrasi Pembelajaran Organisasi PT Bukit Asam Tbk.</div>
+            <div class="hero-text"><span class="holo-text">Knowledge</span><br>Management System PT BA</div>
+            <div class="hero-sub" style="margin: 0 auto;">Pusat Integrasi Pembelajaran Organisasi Divisi PMO PT Bukit Asam Tbk.</div>
         </div>
     """, unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 1.2, 1])
     with col2:
         with st.container(border=True):
-            st.markdown("<div style='text-align:center; font-family:\"Space Grotesk\", sans-serif; font-size: 18px; margin-bottom: 32px; font-weight: 600; letter-spacing: 0.5px;'>Otentikasi Akses Keamanan</div>", unsafe_allow_html=True)
+            st.markdown("<div style='text-align:center; font-family:\"Space Grotesk\", sans-serif; font-size: 18px; margin-bottom: 32px; font-weight: 600; letter-spacing: 0.5px;'>Login</div>", unsafe_allow_html=True)
             username = st.text_input("Username", placeholder="ID Personel...")
             password = st.text_input("Password", type="password", placeholder="Kata Sandi Enkripsi...")
             
