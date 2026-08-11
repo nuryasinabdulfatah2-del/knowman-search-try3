@@ -766,7 +766,7 @@ def view_browse(repo):
     st.markdown("<div class='holo-wave-divider'></div>", unsafe_allow_html=True)
     
     if df.empty: 
-        render_empty_state("Pencarian Buntu", "Sistem tidak mendeteksi rekaman yang selaras dengan filter spesifik Anda.")
+        render_empty_state("Pencarian Tidak Ditemukan", "Sistem tidak mendeteksi dokumen yang selaras dengan filter spesifik Anda.")
     else:
         st.markdown(f"<div style='font-size: 15px; font-weight:600; color: var(--text-muted); margin-bottom: 24px; letter-spacing: 0.5px;'>Menemukan <b>{len(df)}</b> rekaman data.</div>", unsafe_allow_html=True)
         for _, row in df.iterrows(): 
