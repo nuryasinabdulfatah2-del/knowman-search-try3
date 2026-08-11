@@ -2,7 +2,7 @@
 """
 PT Bukit Asam Knowledge Management System
 Architecture: Object-Oriented, Auto GDrive Integration, Dynamic Routing, GEMINI AI INTEGRATION, RBAC Login
-Format: Lessons Learned Register
+Format: Lessons Learned Register (Cyberpunk UI Edition)
 """
 
 import streamlit as st
@@ -56,14 +56,12 @@ except ImportError:
 # ==============================================================================
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "km_enterprise.db")
 
-# DUMMY USERS DATABASE (Untuk produksi, pindahkan ke tabel SQLite atau st.secrets)
 USER_CREDENTIALS = {
     "pm_user": {"password": "password123", "role": "Uploader"},
     "pmo_reviewer": {"password": "password123", "role": "Reviewer"},
     "guest": {"password": "password123", "role": "Viewer"}
 }
 
-# --- LIST SATUAN KERJA (Berdasarkan Struktur Organisasi) ---
 PMO_SATKER_OPTIONS = [
     "Project Management Office",
     "Mine Development",
@@ -84,13 +82,12 @@ ALL_DEPARTMENTS_OPTIONS = [
     "Lainnya"
 ]
 
-# MAPPING FOLDER G-DRIVE BERDASARKAN TIPE / DIVISI
 DIVISION_FOLDERS = {
     "Human Resources (HR)": "14Q949Rt_UNyEKYenuneBZXlgzznUMOnY",
     "Information Technology (IT)": "1-bPwqpCeY4yRtdGpzfZ4UmjmQKSTk7AV",
     "Finance": "1Pdkc9LD7XFkFhioznFWIZozp8lyqb_q-",
     "Operations": "1kVAq06Jep0dLL-dTOpDLqtxR3iugcB4F",
-    "Lainnya": "1Pdkc9LD7XFkFhioznFWIZozp8lyqb_q-" # Folder Default
+    "Lainnya": "1Pdkc9LD7XFkFhioznFWIZozp8lyqb_q-" 
 }
 
 TIPE_DIVISI_OPTIONS = list(DIVISION_FOLDERS.keys())
@@ -101,18 +98,20 @@ KEYWORDS_DAMPAK = ["dampak", "akibat", "menyebabkan", "tertunda"]
 KEYWORDS_PENCEGAHAN = ["pencegahan", "solusi", "rekomendasi", "memilih"]
 KEYWORDS_TANTANGAN = ["tantangan", "risiko", "kemungkinan", "hambatan"]
 
-def create_apple_theme():
-    font_family = "'Inter', -apple-system, sans-serif"
-    template = pio.templates["plotly_white"]
-    template.layout.font = dict(family=font_family, color="#1E2A32", size=14)
+# --- PLOTLY CYBERPUNK THEME ---
+def create_cyberpunk_theme():
+    font_family = "'Rajdhani', sans-serif"
+    template = pio.templates["plotly_dark"]
+    template.layout.font = dict(family=font_family, color="#e0e0e0", size=14)
     template.layout.paper_bgcolor = "rgba(0,0,0,0)"
     template.layout.plot_bgcolor = "rgba(0,0,0,0)"
-    template.layout.colorway = ["#6BA3CE", "#8CC8A4", "#9FBFE0", "#B2DAC1", "#4A7C9D", "#629E85"]
+    template.layout.colorway = ["#00f3ff", "#bc13fe", "#ff003c", "#fcee0a", "#00ff66"]
     template.layout.xaxis.showgrid = False
     template.layout.yaxis.showgrid = True
-    template.layout.yaxis.gridcolor = "rgba(107, 163, 206, 0.1)"
-    pio.templates["apple_enterprise"] = template
-    pio.templates.default = "apple_enterprise"
+    template.layout.yaxis.gridcolor = "rgba(0, 243, 255, 0.1)"
+    template.layout.xaxis.gridcolor = "rgba(0, 243, 255, 0.1)"
+    pio.templates["cyberpunk"] = template
+    pio.templates.default = "cyberpunk"
 
 # ==============================================================================
 # 3. GOOGLE DRIVE UPLOADER 
@@ -145,7 +144,7 @@ def upload_to_gdrive(file_bytes_io, filename, target_folder_id):
         return None
 
 # ==============================================================================
-# 4. DATA REPOSITORY (NEW SCHEMA: LESSONS LEARNED)
+# 4. DATA REPOSITORY
 # ==============================================================================
 class KnowledgeRepository:
     def __init__(self, db_path):
@@ -160,7 +159,6 @@ class KnowledgeRepository:
     def _init_db(self):
         conn = self.get_connection()
         cur = conn.cursor()
-        # Menambahkan kolom project_owner & related_department
         cur.execute("""
             CREATE TABLE IF NOT EXISTS lessons_learned (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, 
@@ -319,86 +317,235 @@ def extract_knowledge(text: str) -> dict:
     return res
 
 # ==============================================================================
-# 6. UI COMPONENTS & CSS 
+# 6. UI COMPONENTS & CSS (CYBERPUNK THEME)
 # ==============================================================================
-def inject_enterprise_css():
+def inject_cyberpunk_css():
     st.markdown("""
     <style>
-    @import url('[https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Inter:wght@400;500;600;700;800;900&display=swap](https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Inter:wght@400;500;600;700;800;900&display=swap)');
+    @import url('[https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap](https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap)');
+    
     :root {
-        --bg: #F4F9F8; --surface: #FFFFFF; --text-primary: #1E2A32; --text-secondary: #7A8D99;
-        --border: rgba(107, 163, 206, 0.15); --accent-blue: #6BA3CE; --accent-blue-hover: #5A8DB7;
-        --sem-red-bg: rgba(227, 138, 138, 0.15); --sem-red-text: #B85C5C; --sem-red-btn: #D98080;
-        --sem-yellow-bg: rgba(229, 185, 110, 0.18); --sem-yellow-text: #B38634; --sem-yellow-btn: #E5B96E;
-        --sem-green-bg: rgba(140, 200, 164, 0.2); --sem-green-text: #4A8C64;
-        --sem-grey-bg: rgba(122, 141, 153, 0.12); --sem-grey-text: #667A8A;
-        --sem-purple-bg: rgba(147, 112, 219, 0.15); --sem-purple-text: #6A4C9C;
+        --bg-main: #050510;
+        --neon-cyan: #00f3ff;
+        --neon-cyan-dim: rgba(0, 243, 255, 0.2);
+        --neon-purple: #bc13fe;
+        --neon-purple-dim: rgba(188, 19, 254, 0.2);
+        --neon-pink: #ff003c;
+        --text-bright: #ffffff;
+        --text-muted: #8892b0;
+        --glass-bg: rgba(10, 15, 30, 0.65);
+        --glass-border: rgba(0, 243, 255, 0.3);
     }
-    html, body, p, h1, h2, h3, h4, h5, h6, label, li { font-family: 'Inter', sans-serif !important; }
-    .stApp, [data-testid="stAppViewContainer"] { background-color: var(--bg) !important; }
+
+    /* Animated Grid Background */
+    @keyframes moveGrid {
+        0% { background-position: 0 0; }
+        100% { background-position: 30px 30px; }
+    }
+
+    html, body, .stApp, [data-testid="stAppViewContainer"] {
+        background-color: var(--bg-main) !important;
+        background-image:
+            linear-gradient(rgba(0, 243, 255, 0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 243, 255, 0.05) 1px, transparent 1px) !important;
+        background-size: 30px 30px !important;
+        animation: moveGrid 4s linear infinite;
+        font-family: 'Rajdhani', sans-serif !important;
+        color: var(--text-bright) !important;
+    }
+
+    p, label, li, div {
+        font-family: 'Rajdhani', sans-serif;
+    }
+    h1, h2, h3, h4, h5, h6 {
+        font-family: 'Orbitron', sans-serif !important;
+        color: var(--neon-cyan) !important;
+        text-shadow: 0 0 10px var(--neon-cyan-dim);
+    }
+
+    /* Sticky Navbar / Sidebar Styling */
     header[data-testid="stHeader"] { background-color: transparent !important; z-index: 99 !important; }
-    [data-testid="collapsedControl"] { display: flex !important; visibility: visible !important; background-color: var(--surface) !important; color: var(--text-primary) !important; border-radius: 50% !important; box-shadow: 0 4px 12px rgba(107, 163, 206, 0.15) !important; border: 1px solid var(--border) !important; margin: 1rem !important; z-index: 100 !important; }
+    [data-testid="stSidebar"] {
+        background-color: rgba(5, 5, 16, 0.9) !important;
+        border-right: 1px solid var(--neon-purple-dim);
+        box-shadow: 2px 0 15px rgba(188, 19, 254, 0.1);
+        backdrop-filter: blur(10px);
+    }
+    [data-testid="collapsedControl"] {
+        display: flex !important; visibility: visible !important;
+        background-color: var(--glass-bg) !important;
+        color: var(--neon-cyan) !important;
+        border: 1px solid var(--neon-cyan) !important;
+        border-radius: 8px !important;
+        margin: 1rem !important; z-index: 100 !important;
+        box-shadow: 0 0 10px var(--neon-cyan-dim) !important;
+    }
+    
     .stAppDeployButton, footer { display: none !important; } 
     .block-container { padding-top: 5rem !important; padding-bottom: 6rem !important; max-width: 1200px !important; }
-    .hero-text { font-family: 'Caveat', cursive !important; font-size: 110px; font-weight: 700; line-height: 0.9; color: var(--text-primary); margin-bottom: 24px; }
-    .section-title { font-family: 'Caveat', cursive !important; font-size: 54px; font-weight: 700; margin-bottom: 32px; color: var(--text-primary); }
-    .hero-sub { font-size: 20px; font-weight: 500; color: var(--text-secondary); margin-bottom: 80px; max-width: 600px; line-height: 1.5; }
-    .bento, [data-testid="stVerticalBlockBorderWrapper"] { background-color: var(--surface) !important; border-radius: 32px !important; padding: 32px !important; border: 1px solid var(--border) !important; box-shadow: 0 10px 30px rgba(107, 163, 206, 0.04) !important; transition: transform .35s, box-shadow .35s !important; height: 100%; }
-    .bento:hover, [data-testid="stVerticalBlockBorderWrapper"]:hover { transform: translateY(-6px) !important; box-shadow: 0 35px 60px rgba(107, 163, 206, 0.08) !important; }
     
-    /* MODIFIKASI TAMPILAN ACCORDION BROWSE & APPROVAL */
-    [data-testid="stExpander"] {
-        background-color: var(--surface) !important;
+    /* Hero Section */
+    .hero-text { 
+        font-family: 'Orbitron', sans-serif !important; 
+        font-size: 80px; 
+        font-weight: 900; 
+        line-height: 1; 
+        color: var(--text-bright); 
+        margin-bottom: 16px;
+        text-transform: uppercase;
+        text-shadow: 0 0 10px var(--neon-cyan), 0 0 20px var(--neon-purple);
+        letter-spacing: 2px;
+    }
+    .hero-sub { 
+        font-size: 22px; 
+        font-weight: 500; 
+        color: var(--neon-cyan); 
+        margin-bottom: 60px; 
+        max-width: 700px; 
+        line-height: 1.5;
+        letter-spacing: 1px;
+    }
+    .section-title { 
+        font-family: 'Orbitron', sans-serif !important; 
+        font-size: 36px; 
+        font-weight: 700; 
+        margin-bottom: 32px; 
+        color: var(--neon-cyan);
+        text-transform: uppercase;
+        text-shadow: 0 0 8px var(--neon-cyan-dim);
+        border-bottom: 1px solid var(--neon-purple);
+        padding-bottom: 10px;
+    }
+
+    /* Glassmorphism Cards & Expanders */
+    .bento, [data-testid="stVerticalBlockBorderWrapper"], [data-testid="stExpander"] {
+        background: var(--glass-bg) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
+        border: 1px solid var(--glass-border) !important;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
         border-radius: 12px !important;
-        border: 1px solid var(--border) !important;
-        box-shadow: 0 4px 12px rgba(107, 163, 206, 0.05) !important;
-        margin-bottom: 12px;
+        transition: all 0.3s ease !important;
         overflow: hidden;
     }
+    .bento:hover, [data-testid="stVerticalBlockBorderWrapper"]:hover, [data-testid="stExpander"]:hover {
+        border-color: var(--neon-cyan) !important;
+        box-shadow: 0 0 15px var(--neon-cyan-dim), inset 0 0 10px var(--neon-purple-dim) !important;
+        transform: translateY(-2px) !important;
+    }
+
+    /* Accordion Details */
     [data-testid="stExpander"] summary {
+        font-family: 'Orbitron', sans-serif !important;
         font-weight: 700 !important;
         font-size: 16px !important;
-        color: var(--text-primary) !important;
+        color: var(--neon-cyan) !important;
         padding: 16px !important;
-        background-color: var(--surface) !important;
-        transition: background-color 0.2s ease !important;
+        background-color: transparent !important;
+        transition: background-color 0.2s ease, text-shadow 0.2s ease !important;
     }
     [data-testid="stExpander"] summary:hover {
-        background-color: rgba(107, 163, 206, 0.05) !important;
+        background-color: rgba(0, 243, 255, 0.1) !important;
+        text-shadow: 0 0 8px var(--neon-cyan) !important;
     }
     [data-testid="stExpanderDetails"] {
         padding: 24px !important;
-        border-top: 1px dashed var(--border) !important;
+        border-top: 1px dashed var(--neon-purple) !important;
+        background: rgba(0, 0, 0, 0.2) !important;
     }
 
-    .kpi-big-val { font-size: 96px; font-weight: 800; line-height: 1; color: var(--text-primary);}
-    .kpi-big-title { font-size: 20px; font-weight: 600; color: var(--accent-blue); margin-top: 12px;}
-    .kpi-small-val { font-size: 48px; font-weight: 700; line-height: 1; color: var(--text-primary);}
-    .kpi-small-title { font-size: 16px; font-weight: 600; color: var(--text-secondary); margin-top: 8px;}
-    .card-meta { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 32px;}
-    .card-section { font-size: 12px; font-weight: 800; text-transform: uppercase; color: var(--accent-blue); margin-top: 24px; margin-bottom: 8px; border-bottom: 1px solid rgba(107,163,206,0.2); padding-bottom: 4px;}
-    .card-body { font-size: 15px; font-weight: 400; line-height: 1.6; color: var(--text-primary);}
-    .badge { display: inline-block; padding: 6px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 700; margin-right: 8px;}
-    .badge-status-Pending { background-color: var(--sem-grey-bg); color: var(--sem-grey-text); }
-    .badge-status-Verified { background-color: var(--sem-green-bg); color: var(--sem-green-text); }
-    .badge-status-NeedsRevision { background-color: var(--sem-yellow-bg); color: var(--sem-yellow-text); }
-    .badge-status-Rejected { background-color: var(--sem-red-bg); color: var(--sem-red-text); }
-    .badge-kategori { background-color: var(--sem-purple-bg); color: var(--sem-purple-text); border: 1px solid rgba(147, 112, 219, 0.2); }
-    .badge-tipe { background-color: var(--sem-blue-bg); color: var(--accent-blue); border: 1px solid rgba(107, 163, 206, 0.2); }
-    .gdrive-link-btn { display: inline-flex; align-items: center; gap: 8px; background-color: rgba(107, 163, 206, 0.12); color: var(--accent-blue) !important; padding: 8px 18px; border-radius: 12px; font-weight: 700; font-size: 13.5px; text-decoration: none !important; margin-top: 16px; transition: all 0.2s ease; border: 1px solid rgba(107, 163, 206, 0.25); }
-    .gdrive-link-btn:hover { background-color: var(--accent-blue); color: var(--surface) !important; transform: translateY(-2px); }
+    /* KPI Cards */
+    .kpi-big-val { font-family: 'Orbitron', sans-serif; font-size: 72px; font-weight: 900; line-height: 1; color: var(--neon-purple); text-shadow: 0 0 15px var(--neon-purple-dim);}
+    .kpi-big-title { font-size: 18px; font-weight: 700; color: var(--neon-cyan); margin-top: 12px; text-transform: uppercase; letter-spacing: 2px;}
+    .kpi-small-val { font-family: 'Orbitron', sans-serif; font-size: 48px; font-weight: 700; line-height: 1; color: var(--neon-purple); text-shadow: 0 0 10px var(--neon-purple-dim);}
+    .kpi-small-title { font-size: 16px; font-weight: 700; color: var(--text-muted); margin-top: 8px; text-transform: uppercase; letter-spacing: 1px;}
     
-    .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div { background-color: var(--bg) !important; border: 1px solid var(--border) !important; border-radius: 18px !important; padding: 16px 20px !important; font-size: 17px; font-weight: 500; color: var(--text-primary) !important; transition: .2s ease; }
-    .stTextInput input:focus, .stTextArea textarea:focus, .stSelectbox div[data-baseweb="select"] > div:focus-within { border-color: var(--accent-blue) !important; box-shadow: 0 0 0 2px rgba(107,163,206,0.3) !important; }
-    .stButton button, .stDownloadButton button, [data-testid="stFormSubmitButton"] button { background-color: var(--accent-blue) !important; color: var(--surface) !important; border-radius: 20px !important; padding: 16px 32px !important; font-weight: 600 !important; font-size: 17px !important; border: none !important; width: 100%; transition: transform .3s, box-shadow .3s !important; }
-    .stButton button:hover, .stDownloadButton button:hover, [data-testid="stFormSubmitButton"] button:hover { background-color: var(--accent-blue-hover) !important; transform: translateY(-2px); box-shadow: 0 15px 30px rgba(107, 163, 206, 0.25) !important; }
-    div[data-testid="stButton"] button:has(p:contains("Reject")) { background-color: var(--sem-red-btn) !important; }
-    div[data-testid="stButton"] button:has(p:contains("Verify")) { background-color: var(--accent-blue) !important; }
-    div[data-testid="stButton"] button:has(p:contains("Revision")) { background-color: var(--sem-yellow-btn) !important; }
-    div[data-testid="stButton"] button:has(p:contains("Delete")) { background-color: var(--text-secondary) !important; }
-    [data-testid="stSidebar"] { background-color: var(--surface) !important; border-right: 1px solid var(--border); }
-    div[role="radiogroup"] > label { background-color: transparent !important; padding: 12px 20px; border-radius: 12px; font-size: 17px; font-weight: 600; color: var(--text-secondary); transition: .2s; }
-    div[role="radiogroup"] > label[data-checked="true"] { background-color: var(--bg) !important; color: var(--accent-blue) !important; }
+    /* Card Content Typography */
+    .card-meta { font-size: 14px; font-weight: 600; color: var(--text-muted); margin-bottom: 24px;}
+    .card-section { font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--neon-cyan); margin-top: 24px; margin-bottom: 8px; border-bottom: 1px solid var(--neon-cyan-dim); padding-bottom: 4px; letter-spacing: 1px;}
+    .card-body { font-size: 16px; font-weight: 500; line-height: 1.6; color: var(--text-bright);}
+    
+    /* Neon Badges */
+    .badge { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: 700; margin-right: 8px; text-transform: uppercase; letter-spacing: 1px; font-family: 'Orbitron', sans-serif;}
+    .badge-status-Pending { background: transparent; color: #fcee0a; border: 1px solid #fcee0a; box-shadow: 0 0 5px rgba(252, 238, 10, 0.3);}
+    .badge-status-Verified { background: transparent; color: #00ff66; border: 1px solid #00ff66; box-shadow: 0 0 5px rgba(0, 255, 102, 0.3);}
+    .badge-status-NeedsRevision { background: transparent; color: #ff8800; border: 1px solid #ff8800; box-shadow: 0 0 5px rgba(255, 136, 0, 0.3);}
+    .badge-status-Rejected { background: transparent; color: var(--neon-pink); border: 1px solid var(--neon-pink); box-shadow: 0 0 5px rgba(255, 0, 60, 0.3);}
+    .badge-kategori { background: rgba(188, 19, 254, 0.1); color: var(--neon-purple); border: 1px solid var(--neon-purple); box-shadow: 0 0 5px var(--neon-purple-dim);}
+    .badge-tipe { background: rgba(0, 243, 255, 0.1); color: var(--neon-cyan); border: 1px solid var(--neon-cyan); box-shadow: 0 0 5px var(--neon-cyan-dim);}
+    
+    /* GDrive Button */
+    .gdrive-link-btn { display: inline-flex; align-items: center; gap: 8px; background-color: transparent; color: var(--neon-cyan) !important; padding: 8px 18px; border-radius: 4px; font-weight: 700; font-size: 14px; text-decoration: none !important; margin-top: 16px; transition: all 0.3s ease; border: 1px solid var(--neon-cyan); box-shadow: 0 0 5px var(--neon-cyan-dim); text-transform: uppercase; font-family: 'Orbitron', sans-serif;}
+    .gdrive-link-btn:hover { background-color: var(--neon-cyan); color: var(--bg-main) !important; box-shadow: 0 0 15px var(--neon-cyan); transform: scale(1.02); }
+    
+    /* Inputs */
+    .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div { 
+        background-color: rgba(5, 5, 16, 0.8) !important; 
+        border: 1px solid var(--glass-border) !important; 
+        border-radius: 4px !important; 
+        padding: 14px 18px !important; 
+        font-size: 16px; font-weight: 500; 
+        color: var(--neon-cyan) !important; 
+        transition: all 0.3s ease; 
+        font-family: 'Rajdhani', sans-serif;
+    }
+    .stTextInput input:focus, .stTextArea textarea:focus, .stSelectbox div[data-baseweb="select"] > div:focus-within { 
+        border-color: var(--neon-cyan) !important; 
+        box-shadow: 0 0 10px var(--neon-cyan-dim), inset 0 0 5px var(--neon-cyan-dim) !important; 
+    }
+    
+    /* Action Buttons (Glowing effect) */
+    .stButton button, .stDownloadButton button, [data-testid="stFormSubmitButton"] button { 
+        background-color: transparent !important; 
+        color: var(--neon-cyan) !important; 
+        border-radius: 4px !important; 
+        padding: 12px 24px !important; 
+        font-weight: 700 !important; 
+        font-size: 16px !important; 
+        border: 1px solid var(--neon-cyan) !important; 
+        width: 100%; 
+        transition: all 0.3s ease !important; 
+        text-transform: uppercase;
+        font-family: 'Orbitron', sans-serif !important;
+        letter-spacing: 2px;
+        box-shadow: 0 0 8px var(--neon-cyan-dim) !important;
+        position: relative;
+        overflow: hidden;
+    }
+    .stButton button:hover, .stDownloadButton button:hover, [data-testid="stFormSubmitButton"] button:hover { 
+        background-color: var(--neon-cyan) !important; 
+        color: var(--bg-main) !important; 
+        box-shadow: 0 0 20px var(--neon-cyan), 0 0 40px var(--neon-cyan) !important; 
+        transform: translateY(-2px); 
+    }
+    
+    /* Role-based button coloring overrides */
+    div[data-testid="stButton"] button:has(p:contains("Reject")) { border-color: var(--neon-pink) !important; color: var(--neon-pink) !important; box-shadow: 0 0 8px rgba(255, 0, 60, 0.3) !important;}
+    div[data-testid="stButton"] button:has(p:contains("Reject")):hover { background: var(--neon-pink) !important; color: #fff !important; box-shadow: 0 0 20px var(--neon-pink) !important;}
+    
+    div[data-testid="stButton"] button:has(p:contains("Verify")) { border-color: #00ff66 !important; color: #00ff66 !important; box-shadow: 0 0 8px rgba(0, 255, 102, 0.3) !important;}
+    div[data-testid="stButton"] button:has(p:contains("Verify")):hover { background: #00ff66 !important; color: #000 !important; box-shadow: 0 0 20px #00ff66 !important;}
+    
+    div[data-testid="stButton"] button:has(p:contains("Revision")) { border-color: #fcee0a !important; color: #fcee0a !important; box-shadow: 0 0 8px rgba(252, 238, 10, 0.3) !important;}
+    div[data-testid="stButton"] button:has(p:contains("Revision")):hover { background: #fcee0a !important; color: #000 !important; box-shadow: 0 0 20px #fcee0a !important;}
+    
+    div[data-testid="stButton"] button:has(p:contains("Delete")) { border-color: var(--text-muted) !important; color: var(--text-muted) !important;}
+    div[data-testid="stButton"] button:has(p:contains("Delete")):hover { background: var(--text-muted) !important; color: #fff !important;}
+
+    /* Sidebar Radio */
+    div[role="radiogroup"] > label { background-color: transparent !important; padding: 12px 20px; border-radius: 4px; font-size: 16px; font-weight: 700; color: var(--text-muted); transition: 0.3s; font-family: 'Orbitron', sans-serif; text-transform: uppercase;}
+    div[role="radiogroup"] > label:hover { color: var(--neon-purple); text-shadow: 0 0 5px var(--neon-purple-dim); }
+    div[role="radiogroup"] > label[data-checked="true"] { background-color: rgba(188, 19, 254, 0.1) !important; color: var(--neon-purple) !important; border-left: 4px solid var(--neon-purple); box-shadow: inset 5px 0 10px var(--neon-purple-dim);}
+    
+    [data-testid="stFileUploadDropzone"] { border-radius: 8px !important; border: 1px dashed var(--neon-purple) !important; background-color: rgba(188, 19, 254, 0.05) !important; }
+    
+    /* Cyberpunk Divider */
+    .cyber-divider {
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+        margin: 20px 0;
+        box-shadow: 0 0 10px var(--neon-cyan);
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -417,58 +564,62 @@ def render_knowledge_card_content(row):
     tantangan = str(row['tantangan']).replace('\n', '<br>')
     
     gdrive_link = row['gdrive_link'] if 'gdrive_link' in row.keys() and row['gdrive_link'] else ""
-    gdrive_html = f"""<div style="margin-top: 16px;"><a href="{gdrive_link}" target="_blank" class="gdrive-link-btn">📂 Open Google Drive Document</a></div>""" if gdrive_link else ""
+    gdrive_html = f"""<div style="margin-top: 24px;"><a href="{gdrive_link}" target="_blank" class="gdrive-link-btn">ACCESS SECURE FILE // GDRIVE</a></div>""" if gdrive_link else ""
     
-    kat_badge = f"<span class='badge badge-kategori'>{row.get('kategori', 'Area perbaikan')}</span>"
-    tipe_badge = f"<span class='badge badge-tipe'>Divisi Folder: {row.get('tipe', '-')}</span>"
+    kat_badge = f"<span class='badge badge-kategori'>CAT: {row.get('kategori', 'Area perbaikan')}</span>"
+    tipe_badge = f"<span class='badge badge-tipe'>DIR: {row.get('tipe', '-')}</span>"
 
-    # Menambahkan Info Owner dan Department pada Meta Text
     owner_text = row.get('project_owner', '-')
     dept_text = row.get('related_department', '-')
 
     card_html = f"""
     <div style="padding-bottom: 16px;">
         <div class="card-meta" style="margin-bottom: 16px;">
-            PM: {row['manajer_proyek']} &nbsp;|&nbsp; Owner: {owner_text} &nbsp;|&nbsp; Dept: {dept_text} &nbsp;|&nbsp; Last Updated: {row['upload_date']}
+            <span style="color:var(--neon-cyan);">OP:</span> {row['manajer_proyek']} &nbsp;|&nbsp; 
+            <span style="color:var(--neon-cyan);">OWNER:</span> {owner_text} &nbsp;|&nbsp; 
+            <span style="color:var(--neon-cyan);">DEPT:</span> {dept_text} &nbsp;|&nbsp; 
+            <span style="color:var(--neon-cyan);">TS:</span> {row['upload_date']}
         </div>
         <div style="margin-bottom: 24px;">
-            <span class="badge badge-status-{status_str}">{row['status']}</span>
+            <span class="badge badge-status-{status_str}">SYS_STATUS: {row['status']}</span>
             {kat_badge} {tipe_badge}
         </div>
-        <div class="card-section" style="margin-top:0;">Deskripsi Isu</div>
+        <div class="cyber-divider"></div>
+        <div class="card-section" style="margin-top:0;">[01] DESKRIPSI ISU</div>
         <div class="card-body">{deskripsi}</div>
-        <div class="card-section">Dampak Isu</div>
+        <div class="card-section">[02] DAMPAK ISU</div>
         <div class="card-body">{dampak}</div>
-        <div class="card-section">Aktivitas Pencegahan yang Dapat Dilakukan</div>
-        <div class="card-body" style="font-weight: 600;">{pencegahan}</div>
-        <div class="card-section">Tantangan yang Mungkin Dihadapi</div>
+        <div class="card-section">[03] AKTIVITAS PENCEGAHAN</div>
+        <div class="card-body" style="font-weight: 600; color: var(--neon-cyan); text-shadow: 0 0 5px var(--neon-cyan-dim);">{pencegahan}</div>
+        <div class="card-section">[04] TANTANGAN TERUKUR</div>
         <div class="card-body">{tantangan}</div>
         {gdrive_html}
     </div>"""
     st.markdown(card_html, unsafe_allow_html=True)
 
-def render_empty_state(title="Lessons Learned Register", subtitle="Belum ada data yang tersimpan.<br>Buat entri pertama Anda untuk mulai membangun basis data organisasi."):
-    st.markdown(f"""<div class="bento" style="text-align: center; padding: 80px 40px;"><div class="section-title" style="margin-bottom: 16px; font-size: 32px;">{title}</div><div class="card-body" style="color: var(--text-secondary);">{subtitle}</div></div>""", unsafe_allow_html=True)
+def render_empty_state(title="SYS_NO_DATA", subtitle="Basis data kosong. Inisialisasi entri pertama untuk memulai indeks pengetahuan."):
+    st.markdown(f"""<div class="bento" style="text-align: center; padding: 80px 40px;"><div class="section-title" style="margin-bottom: 16px; font-size: 32px; border:none;">{title}</div><div class="card-body" style="color: var(--text-muted); font-family:'Orbitron', sans-serif;">{subtitle}</div></div>""", unsafe_allow_html=True)
 
 # ==============================================================================
 # 7. PAGE VIEWS
 # ==============================================================================
 def view_login():
     st.markdown("""
-        <div style="text-align: center; margin-top: 50px;">
-            <div class="hero-text" style="font-size: 64px; margin-bottom: 10px;">Login Access</div>
-            <div class="hero-sub" style="margin-bottom: 40px; margin-left: auto; margin-right: auto;">Silakan masuk untuk mengakses PTBA Lessons Learned Register</div>
+        <div style="text-align: center; margin-top: 10vh;">
+            <div class="hero-text" style="font-size: 64px; margin-bottom: 10px;">NEURAL_ACCESS_PORT</div>
+            <div class="hero-sub" style="margin-bottom: 40px; margin-left: auto; margin-right: auto;">AUTHENTICATE TO ACCESS PTBA LESSONS LEARNED MAINFRAME</div>
         </div>
     """, unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
         with st.container(border=True):
-            username = st.text_input("Username", placeholder="Masukkan username...")
-            password = st.text_input("Password", type="password", placeholder="Masukkan password...")
+            st.markdown("<div style='text-align:center; color:var(--neon-cyan); font-family:Orbitron; margin-bottom: 20px; letter-spacing: 2px;'>CREDENTIALS REQUIRED</div>", unsafe_allow_html=True)
+            username = st.text_input("Username", placeholder="ENTER USER ID...")
+            password = st.text_input("Password", type="password", placeholder="ENTER PASSWORD...")
             
             st.write("")
-            if st.button("Login"):
+            if st.button("INITIALIZE LOGIN SEQUENCE"):
                 user = USER_CREDENTIALS.get(username)
                 if user and user["password"] == password:
                     st.session_state.logged_in = True
@@ -476,82 +627,77 @@ def view_login():
                     st.session_state.role = user["role"]
                     st.rerun()
                 else:
-                    st.error("Username atau Password salah!")
+                    st.error("ACCESS DENIED: Invalid Credentials")
 
 def view_dashboard(repo):
-    st.markdown("""<div class="hero-text">PT Bukit Asam<br>Lessons Learned</div><div class="hero-sub">Register and transform operational challenges into organizational strategic assets.</div>""", unsafe_allow_html=True)
+    st.markdown("""
+        <div class="hero-text">PT BUKIT ASAM<br>KMS_CORE</div>
+        <div class="hero-sub">REGISTER AND TRANSFORM OPERATIONAL ANOMALIES INTO ORGANIZATIONAL STRATEGIC ASSETS.</div>
+    """, unsafe_allow_html=True)
     df = repo.fetch_all()
     if df.empty:
         render_empty_state()
         return
     left, right = st.columns([2.2, 1])
-    with left: render_big_kpi("Total Register Data", len(df))
+    with left: render_big_kpi("TOTAL DATABANKS", len(df))
     with right:
         verified_rate = int((len(df[df['status'] == 'Verified']) / len(df)) * 100) if len(df) > 0 else 0
-        render_small_kpi("Verified Data", f"{verified_rate}%")
+        render_small_kpi("VERIFIED INTELLIGENCE", f"{verified_rate}%")
         
     st.write("")
     c1, c2 = st.columns([1, 1])
     with c1:
         with st.container(border=True):
-            st.markdown("<div class='card-title' style='font-size: 20px;'>Status Distribusi</div>", unsafe_allow_html=True)
-            fig1 = px.pie(df, names="status", hole=0.8, color="status", color_discrete_map={'Verified': '#8CC8A4', 'Pending Review': '#A0AEB8', 'Needs Revision': '#E5B96E', 'Rejected': '#D98080'})
+            st.markdown("<div class='section-title' style='font-size: 20px;'>STATUS DISTRIBUTION</div>", unsafe_allow_html=True)
+            fig1 = px.pie(df, names="status", hole=0.8, color="status", color_discrete_map={'Verified': '#00ff66', 'Pending Review': '#bc13fe', 'Needs Revision': '#fcee0a', 'Rejected': '#ff003c'})
             fig1.update_layout(showlegend=False, height=300, margin=dict(t=10, b=10, l=10, r=10))
             st.plotly_chart(fig1, use_container_width=True)
     with c2:
         with st.container(border=True):
-            st.markdown("<div class='card-title' style='font-size: 20px;'>Distribusi per Divisi</div>", unsafe_allow_html=True)
-            fig2 = px.histogram(df, y="tipe", color="tipe") 
+            st.markdown("<div class='section-title' style='font-size: 20px;'>DIVISION DISTRIBUTION</div>", unsafe_allow_html=True)
+            fig2 = px.histogram(df, y="tipe", color="tipe", color_discrete_sequence=["#00f3ff", "#bc13fe", "#ff003c", "#fcee0a"]) 
             fig2.update_layout(showlegend=False, xaxis_title="", yaxis_title="", height=300, margin=dict(t=10, b=10, l=10, r=10))
             st.plotly_chart(fig2, use_container_width=True)
 
 def view_browse(repo):
-    st.markdown("<div class='section-title'>Browse Lessons Learned</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>BROWSE MAINFRAME_DATA</div>", unsafe_allow_html=True)
     df = repo.fetch_all()
     
-    # --- PANEL FILTER TERSTRUKTUR ---
     with st.container(border=True):
-        st.markdown("<div style='font-weight: 700; font-size: 16px; margin-bottom: 12px; color: var(--text-primary);'>🔍 Filter & Pencarian Multi-Kategori</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-family: Orbitron; font-weight: 700; font-size: 16px; margin-bottom: 12px; color: var(--neon-purple); letter-spacing: 1px;'>[QUERY PARAMETERS]</div>", unsafe_allow_html=True)
         
-        # Input Kata Kunci
-        search_query = st.text_input("Kata Kunci", placeholder="Cari nama proyek, isu, dampak, atau kata kunci solusi...", label_visibility="collapsed")
+        search_query = st.text_input("Kata Kunci", placeholder="INPUT SEARCH METRICS...", label_visibility="collapsed")
         
-        # Dropdown Filter 3 Kolom
         f1, f2, f3 = st.columns(3)
         with f1:
-            selected_kategori = st.selectbox("Kategori Isu", ["Semua Kategori"] + KATEGORI_OPTIONS)
+            selected_kategori = st.selectbox("Kategori Isu", ["ALL CATEGORIES"] + KATEGORI_OPTIONS)
         with f2:
-            selected_tipe = st.selectbox("Divisi / Tipe Proyek", ["Semua Divisi"] + TIPE_DIVISI_OPTIONS)
+            selected_tipe = st.selectbox("Divisi / Tipe Proyek", ["ALL DIVISIONS"] + TIPE_DIVISI_OPTIONS)
         with f3:
-            STATUS_OPTIONS = ["Semua Status", "Verified", "Pending Review", "Needs Revision", "Rejected"]
+            STATUS_OPTIONS = ["ALL STATUSES", "Verified", "Pending Review", "Needs Revision", "Rejected"]
             selected_status = st.selectbox("Status Verifikasi", STATUS_OPTIONS)
 
-    # --- LOGIKA PENYARINGAN DATA (MULTI-FILTER) ---
-    if selected_kategori != "Semua Kategori":
+    if selected_kategori != "ALL CATEGORIES":
         df = df[df['kategori'] == selected_kategori]
-        
-    if selected_tipe != "Semua Divisi":
+    if selected_tipe != "ALL DIVISIONS":
         df = df[df['tipe'] == selected_tipe]
-        
-    if selected_status != "Semua Status":
+    if selected_status != "ALL STATUSES":
         df = df[df['status'] == selected_status]
-        
     if search_query:
         df = df[df.astype(str).apply(lambda x: x.str.contains(search_query, case=False, na=False)).any(axis=1)]
 
     st.write("")
     
-    # --- HASIL PENCARIAN ---
     if df.empty: 
-        render_empty_state("Data Tidak Ditemukan", "Tidak ada dokumen lessons learned yang sesuai dengan kombinasi filter Anda.")
+        render_empty_state("QUERY RETURNED NULL", "Tidak ada dokumen yang sesuai dengan matriks pencarian.")
     else:
-        st.markdown(f"<div style='font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 16px;'>Menampilkan <b>{len(df)}</b> register pengetahuan yang sesuai kriteria.</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size: 14px; font-family: Orbitron; color: var(--neon-cyan); margin-bottom: 16px; text-shadow: 0 0 5px var(--neon-cyan-dim);'>FOUND [<b>{len(df)}</b>] SECURE RECORDS MATCHING CRITERIA.</div>", unsafe_allow_html=True)
         for _, row in df.iterrows(): 
-            with st.expander(f"📌 {row['nama_proyek']} | Divisi: {row['tipe']} | [{row['status']}]"):
+            with st.expander(f"📌 {row['nama_proyek']} | DIR: {row['tipe']} | [{row['status']}]"):
                 render_knowledge_card_content(row)
 
 def view_upload(repo):
-    st.markdown("<div class='section-title'>Lessons Learned Register Project</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>INITIALIZE NEW REGISTER</div>", unsafe_allow_html=True)
     
     if 'save_success' not in st.session_state: st.session_state.save_success = False
     if 'ai_deskripsi' not in st.session_state: st.session_state.ai_deskripsi = ""
@@ -562,15 +708,15 @@ def view_upload(repo):
     if 'uploaded_filename' not in st.session_state: st.session_state.uploaded_filename = ""
     
     if st.session_state.save_success:
-        st.success("✅ HORE! Dokumen Register berhasil disimpan ke Database!")
+        st.success("✅ UPLOAD SEQUENCE COMPLETE! Data logged to Mainframe.")
         st.session_state.save_success = False
         
     with st.container(border=True):
-        st.markdown("<div class='card-title' style='font-size: 20px; margin-bottom: 16px;'>Gemini AI Document Extraction</div>", unsafe_allow_html=True)
+        st.markdown("<div class='section-title' style='font-size: 20px; margin-bottom: 16px; border:none;'>AI_NEURAL_EXTRACTION</div>", unsafe_allow_html=True)
         uploaded_file = st.file_uploader("Upload lampiran atau laporan pendukung (Format: PDF, DOCX, TXT)", type=["pdf", "txt", "docx"], label_visibility="collapsed")
         
-        if uploaded_file and st.button("Extract Data with Gemini AI"):
-            with st.spinner("Gemini sedang membaca dan menyusun laporan ke dalam 4 format tabel..."):
+        if uploaded_file and st.button("RUN GEMINI.AI PROTOCOL"):
+            with st.spinner("PROCESSING DATA STREAM..."):
                 file_bytes = io.BytesIO(uploaded_file.read())
                 st.session_state.uploaded_file_bytes = file_bytes
                 st.session_state.uploaded_filename = uploaded_file.name
@@ -584,15 +730,14 @@ def view_upload(repo):
                     st.session_state.ai_tantangan = ai_result["tantangan"]
                     st.rerun() 
                 else:
-                    st.error("Teks tidak dapat diekstrak dari dokumen tersebut.")
+                    st.error("EXTRACTION FAILED. CORRUPTED DATABLOCK.")
     st.write("")
     
     with st.container(border=True):
         with st.form("entry_form", border=False, clear_on_submit=True):
-            nama_proyek = st.text_input("Nama Proyek", placeholder="Contoh: Pembangunan Sistem X...")
-            manajer_proyek = st.text_input("Manajer Proyek", placeholder="Nama PM...")
+            nama_proyek = st.text_input("Nama Proyek", placeholder="INPUT PROJECT DESIGNATION...")
+            manajer_proyek = st.text_input("Manajer Proyek", placeholder="INPUT OPERATOR NAME...")
             
-            # --- FIELD BARU: Project Owner & Related Department ---
             c_owner, c_dept = st.columns(2)
             with c_owner:
                 project_owner = st.selectbox("Project Owner (PMO)", PMO_SATKER_OPTIONS)
@@ -605,25 +750,24 @@ def view_upload(repo):
             with c2:
                 tipe = st.selectbox("Tipe / Divisi (Folder Tujuan)", TIPE_DIVISI_OPTIONS)
                 
-            deskripsi_isu = st.text_area("Deskripsi Isu", value=st.session_state.ai_deskripsi, placeholder="Tuliskan isu utama...", height=100)
-            dampak_isu = st.text_area("Dampak Isu", value=st.session_state.ai_dampak, placeholder="Dampak yang dirasakan...", height=100)
-            aktivitas_pencegahan = st.text_area("Aktivitas Pencegahan yang Dapat Dilakukan", value=st.session_state.ai_pencegahan, placeholder="Solusi / mitigasi...", height=100)
-            tantangan = st.text_area("Tantangan yang Mungkin Dihadapi", value=st.session_state.ai_tantangan, placeholder="Risiko lanjutan...", height=100)
+            deskripsi_isu = st.text_area("Deskripsi Isu", value=st.session_state.ai_deskripsi, placeholder="INPUT PRIMARY ANOMALY...", height=100)
+            dampak_isu = st.text_area("Dampak Isu", value=st.session_state.ai_dampak, placeholder="INPUT SYSTEM IMPACT...", height=100)
+            aktivitas_pencegahan = st.text_area("Aktivitas Pencegahan yang Dapat Dilakukan", value=st.session_state.ai_pencegahan, placeholder="INPUT MITIGATION PROTOCOL...", height=100)
+            tantangan = st.text_area("Tantangan yang Mungkin Dihadapi", value=st.session_state.ai_tantangan, placeholder="INPUT RISK PROJECTION...", height=100)
             
             st.write("")
-            submitted = st.form_submit_button("Simpan Register")
+            submitted = st.form_submit_button("TRANSMIT DATA TO MAINFRAME")
             
             if submitted:
                 if nama_proyek and deskripsi_isu:
                     auto_gdrive_link = ""
                     if st.session_state.uploaded_file_bytes:
                         if GDRIVE_AVAILABLE and "gcp_service_account" in st.secrets:
-                            with st.spinner(f"Mengunggah dokumen ke Folder GDrive Divisi {tipe}..."):
+                            with st.spinner(f"UPLOADING TO SECURE CLOUD DIR: {tipe}..."):
                                 target_folder_id = DIVISION_FOLDERS.get(tipe, DIVISION_FOLDERS["Lainnya"])
                                 link = upload_to_gdrive(st.session_state.uploaded_file_bytes, st.session_state.uploaded_filename, target_folder_id)
                                 if link: auto_gdrive_link = link
 
-                    # Memasukkan field baru ke dalam dictionary data
                     data = {
                         "nama_proyek": nama_proyek, 
                         "manajer_proyek": manajer_proyek, 
@@ -649,16 +793,16 @@ def view_upload(repo):
                         st.session_state.save_success = True
                         st.rerun()
                     else:
-                        st.error("❌ Gagal menyimpan ke Database.")
+                        st.error("❌ TRANSMISSION FAILED.")
                 else:
-                    st.error("Nama Proyek dan Deskripsi Isu wajib diisi!")
+                    st.error("MANDATORY FIELDS (Project Name & Anomaly Desc) REQUIRED.")
 
 def view_revision(repo):
-    st.markdown("<div class='section-title'>Revision Desk</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>REVISION DESK</div>", unsafe_allow_html=True)
     df = repo.fetch_all()
     rev_df = df[df['status'] == 'Needs Revision']
     if rev_df.empty:
-        render_empty_state("Meja Kerja Bersih", "Tidak ada dokumen yang membutuhkan revisi.")
+        render_empty_state("WORKSPACE CLEAR", "Tidak ada anomali dokumen yang membutuhkan koreksi.")
         return
 
     for _, row in rev_df.iterrows():
@@ -669,14 +813,13 @@ def view_revision(repo):
         if f'rev_tant_{rid}' not in st.session_state: st.session_state[f'rev_tant_{rid}'] = row['tantangan']
 
         with st.container(border=True):
-            st.markdown(f"<div class='card-title' style='font-size: 24px;'>{row['nama_proyek']}</div>", unsafe_allow_html=True)
-            st.markdown(f"""<div style="background-color: var(--sem-yellow-bg); border-left: 4px solid var(--sem-yellow-text); padding: 16px 20px; border-radius: 12px; margin-bottom: 24px; margin-top: 12px;"><div style="font-weight: 700; color: var(--sem-yellow-text); margin-bottom: 4px; font-size: 13px; text-transform: uppercase;">Reviewer Notes</div><div style="color: var(--text-primary); font-size: 15px; line-height: 1.5;">{row['reviewer_notes']}</div></div>""", unsafe_allow_html=True)
+            st.markdown(f"<div class='section-title' style='font-size: 24px; border:none;'>{row['nama_proyek']}</div>", unsafe_allow_html=True)
+            st.markdown(f"""<div style="background-color: rgba(252, 238, 10, 0.1); border-left: 4px solid #fcee0a; padding: 16px 20px; border-radius: 4px; margin-bottom: 24px; margin-top: 12px; box-shadow: 0 0 10px rgba(252, 238, 10, 0.2);"><div style="font-family:Orbitron; font-weight: 700; color: #fcee0a; margin-bottom: 4px; font-size: 13px; text-transform: uppercase;">ADMIN_FEEDBACK</div><div style="color: var(--text-bright); font-size: 16px; line-height: 1.5;">{row['reviewer_notes']}</div></div>""", unsafe_allow_html=True)
             
             with st.form(f"form_rev_{rid}", border=False):
                 nama_proyek = st.text_input("Nama Proyek", value=row['nama_proyek'])
                 manajer_proyek = st.text_input("Manajer Proyek", value=row['manajer_proyek'])
 
-                # --- FIELD BARU PADA MENU REVISI ---
                 c_owner, c_dept = st.columns(2)
                 with c_owner:
                     owner_val = row.get('project_owner', '')
@@ -701,7 +844,7 @@ def view_revision(repo):
                 tantangan = st.text_area("Tantangan", value=st.session_state[f'rev_tant_{rid}'], height=100)
                 
                 st.write("")
-                if st.form_submit_button("Resubmit for Review"):
+                if st.form_submit_button("RE-TRANSMIT FOR APPROVAL"):
                     data = {
                         'nama_proyek': nama_proyek, 
                         'manajer_proyek': manajer_proyek, 
@@ -719,53 +862,53 @@ def view_revision(repo):
                         st.rerun()
 
 def view_approval(repo):
-    st.markdown("<div class='section-title'>Review & Approval</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>APPROVAL TERMINAL</div>", unsafe_allow_html=True)
     df = repo.fetch_all()
     pending_df = df[df['status'] == 'Pending Review']
     
     if pending_df.empty:
-        render_empty_state("Inbox Kosong", "Semua register telah direview.")
+        render_empty_state("INBOX CLEAR", "Semua blok data telah divalidasi.")
         return
         
     for _, row in pending_df.iterrows():
-        with st.expander(f"📝 [PENDING] {row['nama_proyek']} | PM: {row['manajer_proyek']}"):
+        with st.expander(f"📝 [AWAITING AUTH] {row['nama_proyek']} | OP: {row['manajer_proyek']}"):
             render_knowledge_card_content(row)
             
-            st.markdown("---")
-            notes = st.text_area("Catatan Reviewer (Wajib diisi jika revisi)", key=f"note_{row['id']}")
+            st.markdown("<div class='cyber-divider'></div>", unsafe_allow_html=True)
+            notes = st.text_area("Admin Feedbacks (Wajib diisi jika revisi/reject)", key=f"note_{row['id']}")
             c1, c2, c3, c4 = st.columns(4)
             with c1:
-                if st.button("Delete", key=f"del_{row['id']}"): repo.delete_record(row['id']); st.rerun()
+                if st.button("Delete File", key=f"del_{row['id']}"): repo.delete_record(row['id']); st.rerun()
             with c2:
-                if st.button("Reject", key=f"rej_{row['id']}"): repo.update_status(row['id'], "Rejected", notes); st.rerun()
+                if st.button("Reject File", key=f"rej_{row['id']}"): repo.update_status(row['id'], "Rejected", notes); st.rerun()
             with c3:
-                if st.button("Revision", key=f"rev_{row['id']}"): repo.update_status(row['id'], "Needs Revision", notes); st.rerun()
+                if st.button("Flag Revision", key=f"rev_{row['id']}"): repo.update_status(row['id'], "Needs Revision", notes); st.rerun()
             with c4:
-                if st.button("Verify", key=f"ver_{row['id']}"): repo.update_status(row['id'], "Verified", notes); st.rerun()
+                if st.button("Verify File", key=f"ver_{row['id']}"): repo.update_status(row['id'], "Verified", notes); st.rerun()
 
 def view_export(repo):
-    st.markdown("<div class='section-title'>Data Export</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>DATA EXTRACTION / EXPORT</div>", unsafe_allow_html=True)
     df = repo.fetch_all()
     if df.empty: return render_empty_state()
     with st.container(border=True):
-        st.markdown("<div class='card-title' style='font-size: 24px; margin-bottom: 32px;'>Export Lessons Learned Register</div>", unsafe_allow_html=True)
+        st.markdown("<div class='section-title' style='font-size: 24px; margin-bottom: 32px; border:none;'>DOWNLOAD CORE DATABASE</div>", unsafe_allow_html=True)
         c1, c2 = st.columns(2)
         with c1:
-            st.download_button(label="Download CSV", data=df.to_csv(index=False).encode("utf-8-sig"), file_name=f"PTBA_Lessons_Learned_{datetime.now().strftime('%Y%m%d')}.csv", mime="text/csv")
+            st.download_button(label="EXTRACT AS .CSV", data=df.to_csv(index=False).encode("utf-8-sig"), file_name=f"PTBA_Lessons_Learned_{datetime.now().strftime('%Y%m%d')}.csv", mime="text/csv")
         with c2:
             try:
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine="openpyxl") as writer: df.to_excel(writer, index=False, sheet_name="Register")
-                st.download_button(label="Download Excel", data=output.getvalue(), file_name=f"PTBA_Lessons_Learned.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-            except Exception: st.markdown("<div style='text-align: center; font-size: 14px;'>Membutuhkan library 'openpyxl'</div>", unsafe_allow_html=True)
+                st.download_button(label="EXTRACT AS .XLSX", data=output.getvalue(), file_name=f"PTBA_Lessons_Learned.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            except Exception: st.markdown("<div style='text-align: center; font-size: 14px; color:var(--text-muted);'>'openpyxl' library required for EXCEL extraction.</div>", unsafe_allow_html=True)
 
 # ==============================================================================
 # 8. MAIN & ROUTING
 # ==============================================================================
 def main():
-    st.set_page_config(page_title="PTBA Lessons Learned", layout="wide", initial_sidebar_state="expanded")
-    create_apple_theme()
-    inject_enterprise_css()
+    st.set_page_config(page_title="PTBA Cyber KMS", layout="wide", initial_sidebar_state="expanded")
+    create_cyberpunk_theme()
+    inject_cyberpunk_css()
     repo = get_repository()
 
     if 'logged_in' not in st.session_state:
@@ -785,14 +928,14 @@ def main():
         allowed_pages.extend(["Approval", "Export"])
 
     with st.sidebar:
-        st.markdown("<div style='font-size: 14px; font-weight: 800; letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 4px;'>PT BUKIT ASAM</div>", unsafe_allow_html=True)
-        st.markdown(f"<div style='font-size: 13px; font-weight: 500; color: var(--accent-blue); margin-bottom: 24px; padding: 8px; background: rgba(107, 163, 206, 0.1); border-radius: 8px;'>👤 {st.session_state.username} <br>🛡️ <b>{role}</b></div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-family:Orbitron; font-size: 24px; font-weight: 900; letter-spacing: 2px; color: var(--neon-cyan); margin-bottom: 4px; text-shadow: 0 0 10px var(--neon-cyan-dim);'>PTBA.KMS</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-family:Orbitron; font-size: 13px; font-weight: 500; color: var(--neon-purple); margin-bottom: 32px; padding: 12px; background: rgba(188, 19, 254, 0.1); border-radius: 4px; border: 1px solid var(--neon-purple); box-shadow: inset 0 0 10px var(--neon-purple-dim);'>USER: {st.session_state.username} <br>CLEARANCE: <b>{role}</b></div>", unsafe_allow_html=True)
         
         navigation = st.radio("Nav", allowed_pages, label_visibility="collapsed")
         
         st.write("")
         st.write("")
-        if st.button("Logout"):
+        if st.button("TERMINATE SESSION"):
             st.session_state.logged_in = False
             st.session_state.role = None
             st.session_state.username = None
