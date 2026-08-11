@@ -726,7 +726,7 @@ def view_dashboard(repo):
         render_empty_state()
         return
     left, right = st.columns([2.2, 1])
-    with left: render_big_kpi("Total Basis Pengetahuan", len(df))
+    with left: render_big_kpi("Total Dokumen Tersimpan", len(df))
     with right:
         verified_rate = int((len(df[df['status'] == 'Verified']) / len(df)) * 100) if len(df) > 0 else 0
         render_small_kpi("Tingkat Verifikasi", f"{verified_rate}%")
@@ -736,7 +736,7 @@ def view_dashboard(repo):
     c1, c2 = st.columns([1, 1])
     with c1:
         with st.container(border=True):
-            st.markdown("<div class='section-title' style='font-size: 22px;'>Distribusi Status</div>", unsafe_allow_html=True)
+            st.markdown("<div class='section-title' style='font-size: 22px;'>Grafik Status</div>", unsafe_allow_html=True)
             fig1 = px.pie(df, names="status", hole=0.8, color="status", color_discrete_map={'Verified': '#0052D4', 'Pending Review': '#8E2DE2', 'Needs Revision': '#E100FF', 'Rejected': '#FF0055'})
             fig1.update_layout(showlegend=False, height=340, margin=dict(t=20, b=20, l=10, r=10))
             st.plotly_chart(fig1, use_container_width=True)
@@ -1017,7 +1017,7 @@ def main():
         allowed_pages.extend(["Approval", "Export"])
 
     with st.sidebar:
-        st.markdown("<div style='font-family:\"Space Grotesk\", sans-serif; font-size: 24px; font-weight: 700; letter-spacing: -1px; color: var(--text-main); margin-bottom: 32px;'><span class='holo-text'>KMS</span> Platform.</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-family:\"Space Grotesk\", sans-serif; font-size: 24px; font-weight: 700; letter-spacing: -1px; color: var(--text-main); margin-bottom: 32px;'><span class='holo-text'>KMS</span> Platform</div>", unsafe_allow_html=True)
         
         navigation = st.radio("Sektor Navigasi", allowed_pages, label_visibility="collapsed")
         
