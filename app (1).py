@@ -718,7 +718,7 @@ def view_login():
 
 def view_dashboard(repo):
     st.markdown("""
-        <div class="hero-text"><span class="holo-text">Lessons Learned</span><br>Proyek PT BA</div>
+        <div class="hero-text"><span class="holo-text">Lessons Learned</span><br>Proyek PT Bukit Asam</div>
         <div class="hero-sub">Platform terintegrasi untuk mendokumentasikan, menganalisis, dan mentransformasi isu strategis proyek menjadi strategi perusahaan.</div>
     """, unsafe_allow_html=True)
     df = repo.fetch_all()
