@@ -815,7 +815,7 @@ def view_upload(repo):
         with st.form("entry_form", border=False, clear_on_submit=True):
             c1, c2 = st.columns(2)
             with c1:
-                nama_proyek = st.text_input("Identitas Proyek", placeholder="Contoh: Optimalisasi Tambang Pit 1...")
+                nama_proyek = st.text_input("Nama Proyek", placeholder="Contoh: Optimalisasi Tambang Pit 1...")
             with c2:
                 manajer_proyek = st.text_input("Manajer Pelaksana", placeholder="Nama Penanggung Jawab Eksekusi...")
             
