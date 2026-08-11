@@ -785,7 +785,7 @@ def view_browse(repo):
                 render_knowledge_card_content(row)
 
 def view_upload(repo):
-    st.markdown("<div class='section-title'>Pencatatan <span class='holo-text'>Register.</span></div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>New <span class='holo-text'>Register</span></div>", unsafe_allow_html=True)
     
     if 'save_success' not in st.session_state: st.session_state.save_success = False
     if 'ai_deskripsi' not in st.session_state: st.session_state.ai_deskripsi = ""
@@ -887,11 +887,11 @@ def view_upload(repo):
                     st.error("Parameter Identitas Proyek dan Deskripsi bersifat esensial.")
 
 def view_revision(repo):
-    st.markdown("<div class='section-title'>Terminal <span class='holo-text'>Koreksi.</span></div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>Revision <span class='holo-text'>Desk</span></div>", unsafe_allow_html=True)
     df = repo.fetch_all()
     rev_df = df[df['status'] == 'Needs Revision']
     if rev_df.empty:
-        render_empty_state("Antrean Steril", "Tidak ada dokumen anomali yang menuntut perbaikan per detik ini.")
+        render_empty_state("Tidak Ada Antrean", "Tidak ada dokumen yang perlu diperbaiki")
         return
 
     for _, row in rev_df.iterrows():
