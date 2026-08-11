@@ -813,15 +813,15 @@ def view_upload(repo):
     
     with st.container(border=True):
         with st.form("entry_form", border=False, clear_on_submit=True):
-            c1, c2 = st.columns(2)
-            with c1:
-                nama_proyek = st.text_input("Identitas Proyek", placeholder="Contoh: Optimalisasi Tambang Pit 1...")
-            with c2:
-                manajer_proyek = st.text_input("Manajer Pelaksana", placeholder="Nama Penanggung Jawab Eksekusi...")
             
+            # Identitas Proyek kini mengambil lebar penuh
+            nama_proyek = st.text_input("Identitas Proyek", placeholder="Contoh: Optimalisasi Tambang Pit 1...")
+            
+            # Manajer Proyek diambil diam-diam dari session_state login
+            manajer_proyek = st.session_state.username
+
             c3, c4 = st.columns(2)
             with c3:
-                # Field ini akan mengatur Tipe Divisi / Folder Awan GDrive sekaligus menjadi Project Owner di Database
                 tipe = st.selectbox("Pemilik Proyek / Divisi Utama (Folder GDrive)", TIPE_DIVISI_OPTIONS)
             with c4:
                 related_department = st.selectbox("Departemen Terkait", ALL_DEPARTMENTS_OPTIONS)
@@ -849,7 +849,7 @@ def view_upload(repo):
                     data = {
                         "nama_proyek": nama_proyek, 
                         "manajer_proyek": manajer_proyek, 
-                        "project_owner": tipe, # Diisi otomatis menggunakan dropdown Pemilik Proyek / Divisi
+                        "project_owner": tipe, 
                         "related_department": related_department,
                         "kategori": kategori, 
                         "tipe": tipe, 
@@ -880,7 +880,7 @@ def view_revision(repo):
     df = repo.fetch_all()
     rev_df = df[df['status'] == 'Needs Revision']
     if rev_df.empty:
-        render_empty_state("Antrean Steril", "Tidak ada dokumen anomali yang menuntut perbaikan per detik ini.")
+        render_empty_state("Tidak Ada Antrean", "Tidak ada dokumen yang perlu diperbaiki")
         return
 
     for _, row in rev_df.iterrows():
@@ -895,11 +895,12 @@ def view_revision(repo):
             st.markdown(f"""<div style="background: rgba(255, 255, 255, 0.9); border: 1px solid #FFD966; padding: 24px; border-radius: 12px; margin-bottom: 32px; box-shadow: 0 4px 15px rgba(255,217,102,0.2);"><div style="font-family:'Space Grotesk'; font-weight: 700; color: #B38800; margin-bottom: 8px; font-size: 13px; text-transform: uppercase; letter-spacing:1px;">Catatan Penolakan PMO</div><div style="color: var(--text-main); font-size: 15px; font-weight:500; line-height: 1.6;">{row['reviewer_notes']}</div></div>""", unsafe_allow_html=True)
             
             with st.form(f"form_rev_{rid}", border=False):
-                c1, c2 = st.columns(2)
-                with c1:
-                    nama_proyek = st.text_input("Identitas Proyek", value=row['nama_proyek'])
-                with c2:
-                    manajer_proyek = st.text_input("Manajer Pelaksana", value=row['manajer_proyek'])
+                
+                # Identitas Proyek kini mengambil lebar penuh
+                nama_proyek = st.text_input("Identitas Proyek", value=row['nama_proyek'])
+                
+                # Manajer Proyek dipertahankan dari pemilik asli dokumen secara diam-diam
+                manajer_proyek = row['manajer_proyek'] 
 
                 c3, c4 = st.columns(2)
                 with c3:
