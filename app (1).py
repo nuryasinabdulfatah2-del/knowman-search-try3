@@ -672,7 +672,7 @@ Date: <span style="color:#1A1A24; font-weight:700;">{row['upload_date']}</span>
 </div>"""
     st.markdown(card_html, unsafe_allow_html=True)
 
-def render_empty_state(title="Data Nihil", subtitle="Tidak ada data yang direkam di sektor ini. Mulai inisiasi data baru untuk mengisi basis pengetahuan."):
+def render_empty_state(title="Data Tidak Ditemukan", subtitle="Belum ada dokumen yang disimpan, mulai inisiasi dokumen baru"):
     st.markdown(f"""<div class="bento" style="text-align: center; padding: 120px 40px;"><div class="section-title holo-text" style="margin-bottom: 16px; font-size: 32px; border:none;">{title}</div><div class="card-body" style="color: var(--text-muted); font-weight:500;">{subtitle}</div></div>""", unsafe_allow_html=True)
 
 # ==============================================================================
@@ -681,21 +681,21 @@ def render_empty_state(title="Data Nihil", subtitle="Tidak ada data yang direkam
 def view_login():
     st.markdown("""
         <div style="text-align: center; margin-top: 15vh; margin-bottom: 60px;">
-            <div class="hero-text"><span class="holo-text">Knowledge</span><br>Management System.</div>
-            <div class="hero-sub" style="margin: 0 auto;">Pusat Integrasi Pembelajaran Organisasi Divisi PMO PT Bukit Asam Tbk.</div>
+            <div class="hero-text"><span class="holo-text">Knowledge</span><br>Management System</div>
+            <div class="hero-sub" style="margin: 0 auto;">Pusat Integrasi Pembelajaran Organisasi Divisi PMO PT Bukit Asam Tbk</div>
         </div>
     """, unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 1.2, 1])
     with col2:
         with st.container(border=True):
-            st.markdown("<div style='text-align:center; font-family:\"Space Grotesk\", sans-serif; font-size: 18px; margin-bottom: 32px; font-weight: 600; letter-spacing: 0.5px;'>Otentikasi Akses Keamanan</div>", unsafe_allow_html=True)
+            st.markdown("<div style='text-align:center; font-family:\"Space Grotesk\", sans-serif; font-size: 18px; margin-bottom: 32px; font-weight: 600; letter-spacing: 0.5px;'>Login</div>", unsafe_allow_html=True)
             username = st.text_input("Username", placeholder="ID Personel...")
             password = st.text_input("Password", type="password", placeholder="Kata Sandi Enkripsi...")
             
             st.write("")
             st.write("")
-            if st.button("INISIASI LOGIN"):
+            if st.button("NEXT"):
                 user = USER_CREDENTIALS.get(username)
                 if user and user["password"] == password:
                     st.session_state.logged_in = True
@@ -766,7 +766,7 @@ def view_browse(repo):
     st.markdown("<div class='holo-wave-divider'></div>", unsafe_allow_html=True)
     
     if df.empty: 
-        render_empty_state("Pencarian Buntu", "Sistem tidak mendeteksi rekaman yang selaras dengan filter spesifik Anda.")
+        render_empty_state("Pencarian Tidak Ditemukan", "Sistem tidak mendeteksi dokumen yang cocok dengan filter spesifik Anda")
     else:
         st.markdown(f"<div style='font-size: 15px; font-weight:600; color: var(--text-muted); margin-bottom: 24px; letter-spacing: 0.5px;'>Menemukan <b>{len(df)}</b> rekaman data.</div>", unsafe_allow_html=True)
         for _, row in df.iterrows(): 
@@ -828,7 +828,7 @@ def view_upload(repo):
 
             kategori = st.selectbox("Klasifikasi Kategori", KATEGORI_OPTIONS)
                 
-            deskripsi_isu = st.text_area("Deskripsi Kendala", value=st.session_state.ai_deskripsi, placeholder="Uraikan anomali operasional...", height=120)
+            deskripsi_isu = st.text_area("Deskripsi Kendala", value=st.session_state.ai_deskripsi, placeholder="Deskripsikan kendala proyek di sini...", height=120)
             dampak_isu = st.text_area("Dampak Skala Proyek", value=st.session_state.ai_dampak, placeholder="Implikasi biaya atau timeline...", height=120)
             aktivitas_pencegahan = st.text_area("Protokol Mitigasi", value=st.session_state.ai_pencegahan, placeholder="Langkah konkrit yang direkomendasikan...", height=120)
             tantangan = st.text_area("Risiko Lanjutan", value=st.session_state.ai_tantangan, placeholder="Limitasi dari solusi yang diusulkan...", height=120)
