@@ -91,6 +91,10 @@ COLS_AKAR_MASALAH = ["Masalah / Isu", "Akar Penyebab", "Dampak terhadap Proyek"]
 COLS_METRIK = ["Indikator", "Target", "Aktual", "Keterangan"]
 COLS_REKOMENDASI = ["Rekomendasi / Tindakan", "Penanggung Jawab", "Tenggat Waktu", "Status"]
 
+# Fungsi Pembantu untuk Inisialisasi Tabel Kosong yang Aman bagi st.data_editor
+def get_empty_df(columns):
+    return pd.DataFrame([{col: "" for col in columns}])
+
 # --- PLOTLY HIGH CONTRAST HOLOGRAPHIC THEME ---
 def create_full_holographic_theme():
     font_family = "'Manrope', sans-serif"
@@ -137,7 +141,7 @@ def upload_to_gdrive(file_bytes_io, filename, target_folder_id):
         return None
 
 # ==============================================================================
-# 4. DATA REPOSITORY (ADAPTED TO NEW TEMPLATE WITH JSON TABLES)
+# 4. DATA REPOSITORY
 # ==============================================================================
 class KnowledgeRepository:
     def __init__(self, db_path):
@@ -327,7 +331,7 @@ def extract_knowledge(text: str) -> dict:
     return res
 
 # ==============================================================================
-# 6. UI COMPONENTS & CSS (HIGH CONTRAST HOLOGRAPHIC)
+# 6. UI COMPONENTS & CSS
 # ==============================================================================
 def inject_full_holo_css():
     st.markdown("""
@@ -495,7 +499,7 @@ def render_knowledge_card_content(row):
     Dibuat: <span style="color:#1A1A24; font-weight:700;">{row['upload_date']}</span>
 </div>
 <div style="margin-bottom: 32px;">
-    <span class="badge badge-status-{status_str}">Validasi: {row['status']}</span>
+    <span class="badge badge-status-{status_str}">Status Laporan: {row['status']}</span>
     <span class="badge" style="border-color:rgba(0,0,0,0.1);">Status Proyek: {row['status_proyek']}</span>
 </div>
 
@@ -643,13 +647,13 @@ def view_upload(repo):
     if 'ai_didnt_go_well' not in st.session_state: st.session_state.ai_didnt_go_well = ""
     if 'ai_takeaways' not in st.session_state: st.session_state.ai_takeaways = ""
     
-    # Session state for dynamic tables
+    # Session state for dynamic tables, forced to object types to avoid arrow schema errors
     if 'ai_akar_masalah' not in st.session_state: 
-        st.session_state.ai_akar_masalah = pd.DataFrame(columns=COLS_AKAR_MASALAH)
+        st.session_state.ai_akar_masalah = get_empty_df(COLS_AKAR_MASALAH)
     if 'ai_metrik' not in st.session_state: 
-        st.session_state.ai_metrik = pd.DataFrame(columns=COLS_METRIK)
+        st.session_state.ai_metrik = get_empty_df(COLS_METRIK)
     if 'ai_rekomendasi' not in st.session_state: 
-        st.session_state.ai_rekomendasi = pd.DataFrame(columns=COLS_REKOMENDASI)
+        st.session_state.ai_rekomendasi = get_empty_df(COLS_REKOMENDASI)
         
     if 'uploaded_file_bytes' not in st.session_state: st.session_state.uploaded_file_bytes = None
     if 'uploaded_filename' not in st.session_state: st.session_state.uploaded_filename = ""
@@ -676,15 +680,15 @@ def view_upload(repo):
                     st.session_state.ai_didnt_go_well = ai_result.get("what_didnt_go_well", "")
                     st.session_state.ai_takeaways = ai_result.get("key_takeaways", "")
                     
-                    # Convert AI arrays to pandas DataFrame safely
-                    df_akar = pd.DataFrame(ai_result.get("analisis_akar_masalah", []))
-                    st.session_state.ai_akar_masalah = df_akar if not df_akar.empty else pd.DataFrame(columns=COLS_AKAR_MASALAH)
+                    # Convert AI arrays to pandas DataFrame safely and cast to string to avoid PyArrow mixed type errors
+                    raw_akar = ai_result.get("analisis_akar_masalah", [])
+                    st.session_state.ai_akar_masalah = pd.DataFrame(raw_akar, columns=COLS_AKAR_MASALAH).fillna("").astype(str) if raw_akar else get_empty_df(COLS_AKAR_MASALAH)
                     
-                    df_met = pd.DataFrame(ai_result.get("metrik_keberhasilan", []))
-                    st.session_state.ai_metrik = df_met if not df_met.empty else pd.DataFrame(columns=COLS_METRIK)
+                    raw_metrik = ai_result.get("metrik_keberhasilan", [])
+                    st.session_state.ai_metrik = pd.DataFrame(raw_metrik, columns=COLS_METRIK).fillna("").astype(str) if raw_metrik else get_empty_df(COLS_METRIK)
                     
-                    df_rek = pd.DataFrame(ai_result.get("rekomendasi_tindak_lanjut", []))
-                    st.session_state.ai_rekomendasi = df_rek if not df_rek.empty else pd.DataFrame(columns=COLS_REKOMENDASI)
+                    raw_rek = ai_result.get("rekomendasi_tindak_lanjut", [])
+                    st.session_state.ai_rekomendasi = pd.DataFrame(raw_rek, columns=COLS_REKOMENDASI).fillna("").astype(str) if raw_rek else get_empty_df(COLS_REKOMENDASI)
                     
                     st.rerun() 
                 else:
@@ -772,13 +776,14 @@ def view_upload(repo):
                     }
                     
                     if repo.insert(data):
+                        # Clear AI session states using the helper function
                         st.session_state.ai_ringkasan = ""
                         st.session_state.ai_went_well = ""
                         st.session_state.ai_didnt_go_well = ""
                         st.session_state.ai_takeaways = ""
-                        st.session_state.ai_akar_masalah = pd.DataFrame(columns=COLS_AKAR_MASALAH)
-                        st.session_state.ai_metrik = pd.DataFrame(columns=COLS_METRIK)
-                        st.session_state.ai_rekomendasi = pd.DataFrame(columns=COLS_REKOMENDASI)
+                        st.session_state.ai_akar_masalah = get_empty_df(COLS_AKAR_MASALAH)
+                        st.session_state.ai_metrik = get_empty_df(COLS_METRIK)
+                        st.session_state.ai_rekomendasi = get_empty_df(COLS_REKOMENDASI)
                         st.session_state.uploaded_file_bytes = None
                         st.session_state.uploaded_filename = ""
                         
@@ -805,18 +810,27 @@ def view_revision(repo):
         if f'rev_bad_{rid}' not in st.session_state: st.session_state[f'rev_bad_{rid}'] = row['what_didnt_go_well']
         if f'rev_take_{rid}' not in st.session_state: st.session_state[f'rev_take_{rid}'] = row['key_takeaways']
         
-        # Parse JSON tables safely
+        # Parse JSON tables safely and enforce column structure
         if f'rev_akar_{rid}' not in st.session_state:
-            try: st.session_state[f'rev_akar_{rid}'] = pd.DataFrame(json.loads(row['analisis_akar_masalah']))
-            except: st.session_state[f'rev_akar_{rid}'] = pd.DataFrame(columns=COLS_AKAR_MASALAH)
+            try: 
+                df_akar = pd.DataFrame(json.loads(row['analisis_akar_masalah']), columns=COLS_AKAR_MASALAH).fillna("").astype(str)
+                st.session_state[f'rev_akar_{rid}'] = df_akar if not df_akar.empty else get_empty_df(COLS_AKAR_MASALAH)
+            except: 
+                st.session_state[f'rev_akar_{rid}'] = get_empty_df(COLS_AKAR_MASALAH)
         
         if f'rev_metrik_{rid}' not in st.session_state:
-            try: st.session_state[f'rev_metrik_{rid}'] = pd.DataFrame(json.loads(row['metrik_keberhasilan']))
-            except: st.session_state[f'rev_metrik_{rid}'] = pd.DataFrame(columns=COLS_METRIK)
+            try: 
+                df_met = pd.DataFrame(json.loads(row['metrik_keberhasilan']), columns=COLS_METRIK).fillna("").astype(str)
+                st.session_state[f'rev_metrik_{rid}'] = df_met if not df_met.empty else get_empty_df(COLS_METRIK)
+            except: 
+                st.session_state[f'rev_metrik_{rid}'] = get_empty_df(COLS_METRIK)
             
         if f'rev_rek_{rid}' not in st.session_state:
-            try: st.session_state[f'rev_rek_{rid}'] = pd.DataFrame(json.loads(row['rekomendasi_tindak_lanjut']))
-            except: st.session_state[f'rev_rek_{rid}'] = pd.DataFrame(columns=COLS_REKOMENDASI)
+            try: 
+                df_rek = pd.DataFrame(json.loads(row['rekomendasi_tindak_lanjut']), columns=COLS_REKOMENDASI).fillna("").astype(str)
+                st.session_state[f'rev_rek_{rid}'] = df_rek if not df_rek.empty else get_empty_df(COLS_REKOMENDASI)
+            except: 
+                st.session_state[f'rev_rek_{rid}'] = get_empty_df(COLS_REKOMENDASI)
 
         with st.container(border=True):
             st.markdown(f"<div class='section-title' style='font-size: 26px; margin-bottom: 24px;'>{row['nama_proyek']}</div>", unsafe_allow_html=True)
