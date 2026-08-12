@@ -2,7 +2,7 @@
 """
 PT Bukit Asam Knowledge Management System
 Architecture: Object-Oriented, Auto GDrive Integration, Dynamic Routing, GEMINI AI INTEGRATION, RBAC Login
-Format: Lessons Learned Register (Holographic Edition - Dynamic Tables)
+Format: Lessons Learned Register (Holographic Edition - JSON Mode Enabled)
 """
 
 import streamlit as st
@@ -141,7 +141,7 @@ def upload_to_gdrive(file_bytes_io, filename, target_folder_id):
         return None
 
 # ==============================================================================
-# 4. DATA REPOSITORY
+# 4. DATA REPOSITORY (ADAPTED TO NEW TEMPLATE WITH JSON TABLES)
 # ==============================================================================
 class KnowledgeRepository:
     def __init__(self, db_path):
@@ -259,7 +259,7 @@ def get_repository():
     return KnowledgeRepository(DB_PATH)
 
 # ==============================================================================
-# 5. AI GENERATIVE ENGINE (GEMINI INTEGRATION)
+# 5. AI GENERATIVE ENGINE DENGAN JSON MODE
 # ==============================================================================
 def parse_document(file_bytes, filename) -> str:
     if not file_bytes: return ""
@@ -289,14 +289,19 @@ def extract_knowledge(text: str) -> dict:
     if GEMINI_AVAILABLE and "GEMINI_API_KEY" in st.secrets:
         try:
             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            
+            # MEMAKSA GEMINI UNTUK SELALU MENGHASILKAN JSON MURNI TANPA MARKDOWN
+            model = genai.GenerativeModel(
+                'gemini-1.5-flash',
+                generation_config={"response_mime_type": "application/json"}
+            )
             
             prompt = f"""
             Anda adalah staf PMO profesional di PT Bukit Asam.
             Baca teks laporan di bawah ini dan rangkum isinya sesuai dengan struktur template.
             Untuk bagian berbentuk tabel, hasilkan list of objects (JSON Array) dengan nama kolom yang sesuai.
             
-            WAJIB balas HANYA dengan format JSON valid persis seperti ini (jangan ada teks/markdown lain):
+            Gunakan format JSON yang valid persis seperti kerangka ini:
             {{
                 "ringkasan_proyek": "Penjelasan latar belakang, tujuan...",
                 "what_went_well": "Hal-hal yang berhasil...",
@@ -316,27 +321,26 @@ def extract_knowledge(text: str) -> dict:
             {text[:15000]} 
             """
             response = model.generate_content(prompt)
-            clean_text = response.text.strip()
-            if clean_text.startswith("```json"): clean_text = clean_text[7:]
-            elif clean_text.startswith("```"): clean_text = clean_text[3:]
-            if clean_text.endswith("```"): clean_text = clean_text[:-3]
-            ai_data = json.loads(clean_text.strip())
             
+            # Karena response_mime_type = application/json, kita bisa melangsungkan parse tanpa regex markdown
+            ai_data = json.loads(response.text)
             res.update(ai_data)
             return res
         except Exception as e:
-            st.error(f"AI gagal memproses dokumen: {e}")
+            # Tetap tangkap pesan error jikalau kuota API habis dll.
+            print(f"Detail Error AI: {e}")
+            pass
             
-    res["ringkasan_proyek"] = "Koneksi ke sistem AI terputus. Silakan lengkapi secara manual."
+    res["ringkasan_proyek"] = "Koneksi ke sistem AI gagal atau API Key tidak terbaca. Silakan isi form manual."
     return res
 
 # ==============================================================================
-# 6. UI COMPONENTS & CSS
+# 6. UI COMPONENTS & CSS (HIGH CONTRAST HOLOGRAPHIC)
 # ==============================================================================
 def inject_full_holo_css():
     st.markdown("""
     <style>
-    @import url('[https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap](https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap)');
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap');
     
     :root {
         --holo-bg-grad: linear-gradient(120deg, #FFB3E6, #A3E9FF, #C9B3FF, #FFF3B3, #FFB3E6);
@@ -352,7 +356,7 @@ def inject_full_holo_css():
     @keyframes float { 0% { transform: translateY(0px) scale(1); } 50% { transform: translateY(-20px) scale(1.05); } 100% { transform: translateY(0px) scale(1); } }
 
     html, body, .stApp, [data-testid="stAppViewContainer"] { background: var(--holo-bg-grad) !important; background-size: 300% 300% !important; animation: holo-mesh-bg 20s ease-in-out infinite !important; font-family: 'Manrope', sans-serif !important; color: var(--text-main) !important; background-attachment: fixed !important; position: relative; z-index: 0; }
-    .stApp::before { content: ""; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='[http://www.w3.org/2000/svg'%3E%3Cfilter](http://www.w3.org/2000/svg'%3E%3Cfilter) id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E"); opacity: 0.04; z-index: -1; pointer-events: none; }
+    .stApp::before { content: ""; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E"); opacity: 0.04; z-index: -1; pointer-events: none; }
     .stApp::after { content: ""; position: fixed; bottom: -10vh; right: -10vw; width: 60vw; height: 60vw; background: radial-gradient(circle, rgba(163, 233, 255, 0.8), transparent 70%); filter: blur(80px); z-index: -2; animation: float 25s ease-in-out infinite alternate; pointer-events: none; }
 
     p, label, li, div { font-family: 'Manrope', sans-serif; font-weight: 500; }
@@ -426,7 +430,7 @@ def inject_full_holo_css():
     
     .holo-wave-divider {
         width: 100%; height: 60px; margin: 40px 0;
-        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 1200 120' preserveAspectRatio='none' xmlns='[http://www.w3.org/2000/svg'%3E%3Cpath](http://www.w3.org/2000/svg'%3E%3Cpath) d='M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z' fill='url(%23darkGrad)' fill-opacity='0.15'/%3E%3Cdefs%3E%3ClinearGradient id='darkGrad' x1='0%25' y1='0%25' x2='100%25' y2='0%25'%3E%3Cstop offset='0%25' stop-color='%234A00E0'/%3E%3Cstop offset='50%25' stop-color='%23E100FF'/%3E%3Cstop offset='100%25' stop-color='%2300C9FF'/%3E%3C/linearGradient%3E%3C/defs%3E%3C/svg%3E");
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 1200 120' preserveAspectRatio='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z' fill='url(%23darkGrad)' fill-opacity='0.15'/%3E%3Cdefs%3E%3ClinearGradient id='darkGrad' x1='0%25' y1='0%25' x2='100%25' y2='0%25'%3E%3Cstop offset='0%25' stop-color='%234A00E0'/%3E%3Cstop offset='50%25' stop-color='%23E100FF'/%3E%3Cstop offset='100%25' stop-color='%2300C9FF'/%3E%3C/linearGradient%3E%3C/defs%3E%3C/svg%3E");
         background-size: cover; background-repeat: no-repeat; background-position: center;
     }
     </style>
@@ -485,7 +489,7 @@ def render_knowledge_card_content(row):
 
     gdrive_link = row['gdrive_link'] if 'gdrive_link' in row.keys() and row['gdrive_link'] else ""
     gdrive_html = f"""<div><a href="{gdrive_link}" target="_blank" class="gdrive-link-btn">
-        <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
         Akses Dokumen Fisik
     </a></div>""" if gdrive_link else ""
     
@@ -682,13 +686,22 @@ def view_upload(repo):
                     
                     # Convert AI arrays to pandas DataFrame safely and cast to string to avoid PyArrow mixed type errors
                     raw_akar = ai_result.get("analisis_akar_masalah", [])
-                    st.session_state.ai_akar_masalah = pd.DataFrame(raw_akar, columns=COLS_AKAR_MASALAH).fillna("").astype(str) if raw_akar else get_empty_df(COLS_AKAR_MASALAH)
+                    if isinstance(raw_akar, list):
+                        st.session_state.ai_akar_masalah = pd.DataFrame(raw_akar, columns=COLS_AKAR_MASALAH).fillna("").astype(str) if len(raw_akar) > 0 else get_empty_df(COLS_AKAR_MASALAH)
+                    else:
+                        st.session_state.ai_akar_masalah = get_empty_df(COLS_AKAR_MASALAH)
                     
                     raw_metrik = ai_result.get("metrik_keberhasilan", [])
-                    st.session_state.ai_metrik = pd.DataFrame(raw_metrik, columns=COLS_METRIK).fillna("").astype(str) if raw_metrik else get_empty_df(COLS_METRIK)
+                    if isinstance(raw_metrik, list):
+                        st.session_state.ai_metrik = pd.DataFrame(raw_metrik, columns=COLS_METRIK).fillna("").astype(str) if len(raw_metrik) > 0 else get_empty_df(COLS_METRIK)
+                    else:
+                        st.session_state.ai_metrik = get_empty_df(COLS_METRIK)
                     
                     raw_rek = ai_result.get("rekomendasi_tindak_lanjut", [])
-                    st.session_state.ai_rekomendasi = pd.DataFrame(raw_rek, columns=COLS_REKOMENDASI).fillna("").astype(str) if raw_rek else get_empty_df(COLS_REKOMENDASI)
+                    if isinstance(raw_rek, list):
+                        st.session_state.ai_rekomendasi = pd.DataFrame(raw_rek, columns=COLS_REKOMENDASI).fillna("").astype(str) if len(raw_rek) > 0 else get_empty_df(COLS_REKOMENDASI)
+                    else:
+                        st.session_state.ai_rekomendasi = get_empty_df(COLS_REKOMENDASI)
                     
                     st.rerun() 
                 else:
